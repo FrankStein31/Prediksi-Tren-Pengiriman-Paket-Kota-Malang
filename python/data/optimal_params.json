@@ -1,0 +1,37 @@
+{
+    "BLIMBING": {
+        "changepoint_prior_scale": 0.8,
+        "seasonality_prior_scale": 1.0,
+        "seasonality_mode": "additive",
+        "n_changepoints": 100,
+        "MAPE": 10.524170586843665
+    },
+    "KEDUNGKANDANG": {
+        "changepoint_prior_scale": 0.5,
+        "seasonality_prior_scale": 1.0,
+        "seasonality_mode": "additive",
+        "n_changepoints": 25,
+        "MAPE": 9.09226103061142
+    },
+    "KLOJEN": {
+        "changepoint_prior_scale": 0.001,
+        "seasonality_prior_scale": 0.1,
+        "seasonality_mode": "multiplicative",
+        "n_changepoints": 50,
+        "MAPE": 8.633167374989114
+    },
+    "LOWOKWARU": {
+        "changepoint_prior_scale": 0.5,
+        "seasonality_prior_scale": 10.0,
+        "seasonality_mode": "additive",
+        "n_changepoints": 100,
+        "MAPE": 8.550767278095549
+    },
+    "SUKUN": {
+        "changepoint_prior_scale": 0.05,
+        "seasonality_prior_scale": 0.01,
+        "seasonality_mode": "multiplicative",
+        "n_changepoints": 50,
+        "MAPE": 12.291813613251163
+    }
+}
