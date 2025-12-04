@@ -4,25 +4,25 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PrediksiController;
 
 Route::get('/', function () {
-    return redirect('/dashboard');
+    return redirect()->route('dashboard');
 });
 
 // Main Pages
 Route::get('/dashboard', function () {
-    return view('dashboard');
-});
+    return view('dashboard-new');
+})->name('dashboard');
 
 Route::get('/data-pengiriman', function () {
     return view('data-pengiriman');
-});
+})->name('data.pengiriman');
 
 Route::get('/visualisasi', function () {
     return view('visualisasi');
-});
+})->name('visualisasi');
 
 Route::get('/upload', function () {
     return view('upload');
-});
+})->name('upload');
 
 Route::get('/prediksi-demo', function () {
     return view('prediksi');
