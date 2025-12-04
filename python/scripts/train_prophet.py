@@ -1,8 +1,5 @@
-#!/usr/bin/env python3
-"""
-Script untuk training model Prophet dan menyimpan model yang sudah dilatih
-Jalankan sekali saja untuk membuat model
-"""
+# Script untuk training model Prophet dan menyimpan model yang sudah dilatih
+# Jalankan sekali saja untuk membuat model
 
 import pandas as pd
 import numpy as np
@@ -13,12 +10,12 @@ import os
 import sys
 
 def train_and_save_model():
-    """Train Prophet model untuk setiap kecamatan dan simpan model"""
+    # Train Prophet model untuk setiap kecamatan dan simpan model
     
     # Load data
     data_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'df_kecamatan_weekly.xlsx')
     if not os.path.exists(data_path):
-        print(f"Error: Data file not found at {data_path}")
+        print(f"Error: Data tidak ditemukan {data_path}")
         return False
     
     df = pd.read_excel(data_path)
@@ -37,34 +34,34 @@ def train_and_save_model():
     # Optimal hyperparameters untuk setiap kecamatan (dari optimasi)
     optimal_params = {
         'KEDUNGKANDANG': {
-            'changepoint_prior_scale': 0.5,
-            'seasonality_prior_scale': 1.0,
+            'changepoint_prior_scale': 1.0,
+            'seasonality_prior_scale': 0.1,
             'seasonality_mode': 'additive',
-            'n_changepoints': 25
+            'n_changepoints': 150
         },
         'SUKUN': {
-            'changepoint_prior_scale': 0.001,
+            'changepoint_prior_scale': 0.05,
             'seasonality_prior_scale': 0.01,
             'seasonality_mode': 'multiplicative',
-            'n_changepoints': 100
+            'n_changepoints': 10
         },
         'BLIMBING': {
-            'changepoint_prior_scale': 0.01,
-            'seasonality_prior_scale': 10.0,
+            'changepoint_prior_scale': 1.0,
+            'seasonality_prior_scale': 0.5,
             'seasonality_mode': 'additive',
-            'n_changepoints': 25
+            'n_changepoints': 50
         },
         'LOWOKWARU': {
-            'changepoint_prior_scale': 0.8,
-            'seasonality_prior_scale': 10.0,
-            'seasonality_mode': 'multiplicative',
-            'n_changepoints': 25
+            'changepoint_prior_scale': 1.0,
+            'seasonality_prior_scale': 0.05,
+            'seasonality_mode': 'additive',
+            'n_changepoints': 75
         },
         'KLOJEN': {
-            'changepoint_prior_scale': 0.8,
-            'seasonality_prior_scale': 10.0,
+            'changepoint_prior_scale': 0.001,
+            'seasonality_prior_scale': 0.05,
             'seasonality_mode': 'multiplicative',
-            'n_changepoints': 25
+            'n_changepoints': 100
         }
     }
     
