@@ -22,3 +22,8 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Large data files (>100MB - GitHub limit)
+/database/*.sql
+/python/data/*.csv
+/python/data/*.xlsx
