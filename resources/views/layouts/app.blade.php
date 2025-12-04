@@ -144,14 +144,14 @@
                     <i class="fas fa-copyright"></i> 2025 Prediksi Pengiriman Paket - Kota Malang
                 </div>
                 <div class="flex space-x-4">
-                    <a href="#" class="text-gray-600 hover:text-blue-600">
+                    <a href="https://github.com/FrankStein31/" class="text-gray-600 hover:text-blue-600">
                         <i class="fab fa-github text-xl"></i>
                     </a>
-                    <a href="#" class="text-gray-600 hover:text-blue-600">
+                    <a href="https://www.linkedin.com/in/frankie-steinlie/" class="text-gray-600 hover:text-blue-600">
                         <i class="fab fa-linkedin text-xl"></i>
                     </a>
-                    <a href="#" class="text-gray-600 hover:text-blue-600">
-                        <i class="fas fa-envelope text-xl"></i>
+                    <a href="https://www.instagram.com/steinliejoki" class="text-gray-600 hover:text-blue-600">
+                        <i class="fab fa-instagram text-xl"></i>
                     </a>
                 </div>
             </div>
