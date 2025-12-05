@@ -128,6 +128,28 @@ class ShipmentDataController extends Controller
     }
     
     /**
+     * Delete shipment data
+     */
+    public function destroy($id)
+    {
+        try {
+            $shipment = ShipmentData::findOrFail($id);
+            $nosi = $shipment->nosi;
+            $shipment->delete();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Data dengan NOSI ' . $nosi . ' berhasil dihapus!'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus data: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
      * Get statistics
      */
     public function getStats()

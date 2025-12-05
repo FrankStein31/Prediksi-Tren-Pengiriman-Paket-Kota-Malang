@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\ShipmentData;
+use App\Models\UploadHistory;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use League\Csv\Reader;
 use Illuminate\Support\Facades\Storage;
@@ -20,18 +21,37 @@ class UploadDataController extends Controller
     }
     
     /**
+     * Display upload history page
+     */
+    public function history()
+    {
+        $histories = UploadHistory::orderBy('created_at', 'desc')->paginate(15);
+        
+        return view('upload-history', compact('histories'));
+    }
+    
+    /**
      * Process uploaded file and check for duplicates
      */
     public function process(Request $request)
     {
         $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls,csv|max:102400', // 100MB
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:512000', // 500MB
         ]);
         
         $file = $request->file('file');
         $extension = $file->getClientOriginalExtension();
         
         try {
+            // Store file info in session for later use in import
+            session([
+                'upload_file_info' => [
+                    'filename' => $file->getClientOriginalName(),
+                    'extension' => $extension,
+                    'size' => $file->getSize(),
+                ]
+            ]);
+            
             // Read file based on type
             if (in_array($extension, ['xlsx', 'xls'])) {
                 $data = $this->readExcel($file);
@@ -241,10 +261,27 @@ class UploadDataController extends Controller
     {
         $data = session('upload_preview', []);
         
+        // Sort: Status Baru duluan (false = Baru, true = Duplikat), lalu Tanggal Kirim descending
+        usort($data, function($a, $b) {
+            $isDuplicateA = isset($a['is_duplicate']) ? $a['is_duplicate'] : false;
+            $isDuplicateB = isset($b['is_duplicate']) ? $b['is_duplicate'] : false;
+            
+            // Sort by status first (Baru = false comes first)
+            if ($isDuplicateA !== $isDuplicateB) {
+                return $isDuplicateA ? 1 : -1; // false (Baru) comes first
+            }
+            
+            // If same status, sort by tgl_kirim descending (newest first)
+            $dateA = isset($a['tgl_kirim']) ? strtotime($a['tgl_kirim']) : 0;
+            $dateB = isset($b['tgl_kirim']) ? strtotime($b['tgl_kirim']) : 0;
+            
+            return $dateB - $dateA; // Descending (newest first)
+        });
+        
         // Limit to 50 rows for preview to keep it light
         $previewData = array_slice($data, 0, 50);
         
-        \Log::info('Preview request - Total rows: ' . count($data) . ' | Showing: ' . count($previewData));
+        \Log::info('Preview request - Total rows: ' . count($data) . ' | Showing: ' . count($previewData) . ' (Sorted: Baru first, then by tgl_kirim desc)');
         
         return datatables()
             ->of(collect($previewData))
@@ -277,6 +314,10 @@ class UploadDataController extends Controller
             $imported = 0;
             $skipped = 0;
             
+            // Get file info from session
+            $fileInfo = session('upload_file_info', []);
+            $allData = session('upload_preview', []);
+            
             // Import in chunks for better performance
             $chunks = array_chunk($data, 500);
             
@@ -307,8 +348,21 @@ class UploadDataController extends Controller
                 gc_collect_cycles();
             }
             
+            // Save upload history to database
+            UploadHistory::create([
+                'filename' => $fileInfo['filename'] ?? 'unknown',
+                'file_extension' => $fileInfo['extension'] ?? 'unknown',
+                'file_size' => $fileInfo['size'] ?? 0,
+                'total_rows' => count($allData),
+                'new_rows' => $imported,
+                'duplicate_rows' => count($allData) - $imported,
+                'skipped_rows' => $skipped,
+                'notes' => "Import berhasil: {$imported} data baru ditambahkan, {$skipped} data duplikat diskip.",
+            ]);
+            
             // Clear session
             session()->forget('upload_preview');
+            session()->forget('upload_file_info');
             
             return response()->json([
                 'success' => true,
