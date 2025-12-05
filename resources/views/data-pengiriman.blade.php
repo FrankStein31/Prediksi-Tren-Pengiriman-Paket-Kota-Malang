@@ -97,21 +97,21 @@
 @section('content')
 <div class="space-y-6">
     <!-- Header Section -->
-    <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl shadow-xl p-8 text-white">
+    <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-lg p-5 text-white">
         <div class="flex items-center justify-between">
             <div>
-                <h1 class="text-4xl font-bold mb-2">
-                    <i class="fas fa-database mr-3"></i>Data Pengiriman Paket
+                <h1 class="text-2xl font-bold mb-1">
+                    <i class="fas fa-database mr-2"></i>Data Pengiriman Paket
                 </h1>
-                <p class="text-blue-100 text-lg">Semua data mentah pengiriman paket Kota Malang</p>
+                <p class="text-blue-100 text-sm">Semua data mentah pengiriman paket Kota Malang</p>
             </div>
             <div class="hidden md:block">
-                <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-6 text-center min-w-[180px]">
-                    <div class="flex items-center justify-center gap-3 mb-2">
-                        <i class="fas fa-database text-4xl"></i>
+                <div class="bg-white/20 backdrop-blur-sm rounded-xl p-4 text-center min-w-[140px]">
+                    <div class="flex items-center justify-center gap-2 mb-1">
+                        <i class="fas fa-database text-2xl"></i>
                     </div>
-                    <p class="text-sm font-medium mb-1">Total Data</p>
-                    <h3 class="text-3xl font-bold" id="total-data">
+                    <p class="text-xs font-medium mb-1">Total Data</p>
+                    <h3 class="text-2xl font-bold" id="total-data">
                         <i class="fas fa-spinner fa-spin text-white"></i>
                     </h3>
                 </div>
