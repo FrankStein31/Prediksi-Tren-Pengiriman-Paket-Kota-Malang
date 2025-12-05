@@ -150,7 +150,7 @@
                 <i class="fas fa-cloud-upload-alt text-6xl text-gray-400 mb-4"></i>
                 <p class="text-lg font-semibold text-gray-700 mb-2">Klik atau Drag & Drop File</p>
                 <p class="text-sm text-gray-500">Mendukung: Excel (.xlsx, .xls) dan CSV (.csv)</p>
-                <p class="text-xs text-gray-400 mt-2">Maksimal ukuran file: 100 MB</p>
+                <p class="text-xs text-gray-400 mt-2">Maksimal ukuran file: 500 MB</p>
             </div>
             <div id="file-info" class="hidden">
                 <i class="fas fa-file-excel text-6xl text-green-600 mb-4"></i>
@@ -174,16 +174,23 @@
         </div>
 
         <!-- Action Buttons -->
-        <div class="flex gap-3">
-            <button onclick="processFile()" id="process-btn" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-medium disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>
-                <i class="fas fa-cog mr-2"></i>Proses & Preview Data
-            </button>
-            <button onclick="importData()" id="import-btn" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition font-medium hidden">
-                <i class="fas fa-check mr-2"></i>Import ke Database
-            </button>
-            <button onclick="resetUpload()" class="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition font-medium">
-                <i class="fas fa-undo mr-2"></i>Reset
-            </button>
+        <div class="flex justify-between items-center">
+            <div class="flex gap-3">
+                <button onclick="processFile()" id="process-btn" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-medium disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>
+                    <i class="fas fa-cog mr-2"></i>Proses & Preview Data
+                </button>
+                <button onclick="importData()" id="import-btn" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition font-medium hidden">
+                    <i class="fas fa-check mr-2"></i>Import ke Database
+                </button>
+                <button onclick="resetUpload()" class="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition font-medium">
+                    <i class="fas fa-undo mr-2"></i>Reset
+                </button>
+            </div>
+            
+            <!-- History Button -->
+            <a href="{{ route('upload.history') }}" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition font-medium inline-flex items-center">
+                <i class="fas fa-history mr-2"></i>Lihat History Upload
+            </a>
         </div>
     </div>
 
@@ -287,9 +294,9 @@ function handleFile(file) {
         return;
     }
     
-    // Validate file size (100 MB)
-    if (file.size > 100 * 1024 * 1024) {
-        alert('Ukuran file terlalu besar! Maksimal 100 MB');
+    // Validate file size (500 MB)
+    if (file.size > 500 * 1024 * 1024) {
+        alert('Ukuran file terlalu besar! Maksimal 500 MB');
         return;
     }
     
@@ -405,7 +412,7 @@ function displayPreview(result) {
             { 
                 data: 'status_badge',
                 name: 'status_badge',
-                orderable: false,
+                orderable: false, // Already sorted by backend
                 searchable: false,
                 width: '80px'
             },
@@ -457,8 +464,7 @@ function displayPreview(result) {
             emptyTable: "Tidak ada data tersedia"
         },
         
-        // Default sorting
-        order: [[1, 'asc']],
+        order: [],
         
         // Scroll
         scrollX: true,
