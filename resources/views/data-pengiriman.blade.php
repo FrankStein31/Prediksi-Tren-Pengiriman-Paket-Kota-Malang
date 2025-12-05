@@ -194,6 +194,13 @@
                         <i class="fas fa-undo mr-2"></i>Reset Filter
                     </button>
                 </div>
+
+                <!-- Tombol Ringkasan -->
+                <div class="flex items-end">
+                    <button onclick="window.location.href='{{ route('data-pengiriman.ringkasan-page') }}'" class="w-full bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition text-sm font-medium">
+                        <i class="fas fa-chart-bar mr-2"></i>Ringkasan Mingguan
+                    </button>
+                </div>
             </div>
         </div>
 
