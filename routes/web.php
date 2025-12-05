@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PrediksiController;
 use App\Http\Controllers\ShipmentDataController;
+use App\Http\Controllers\UploadDataController;
 
 Route::get('/', function () {
     return redirect()->route('dashboard');
@@ -21,9 +22,11 @@ Route::get('/visualisasi', function () {
     return view('visualisasi');
 })->name('visualisasi');
 
-Route::get('/upload', function () {
-    return view('upload');
-})->name('upload');
+// Upload Data Routes
+Route::get('/upload', [UploadDataController::class, 'index'])->name('upload');
+Route::post('/upload/process', [UploadDataController::class, 'process'])->name('data.upload.process');
+Route::get('/upload/preview-data', [UploadDataController::class, 'getPreviewData'])->name('data.upload.preview');
+Route::post('/upload/import', [UploadDataController::class, 'import'])->name('data.upload.import');
 
 Route::get('/prediksi-demo', function () {
     return view('prediksi');
@@ -34,10 +37,4 @@ Route::prefix('prediksi')->group(function () {
     Route::get('/kecamatan', [PrediksiController::class, 'getAvailableKecamatan']);
     Route::post('/predict', [PrediksiController::class, 'predict']);
     Route::post('/train', [PrediksiController::class, 'trainModel']);
-});
-
-// Routes untuk upload dan processing
-Route::prefix('upload')->group(function () {
-    Route::post('/preview', [PrediksiController::class, 'uploadPreview']);
-    Route::post('/process', [PrediksiController::class, 'processUpload']);
 });
