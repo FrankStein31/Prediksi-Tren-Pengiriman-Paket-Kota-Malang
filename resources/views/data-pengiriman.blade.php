@@ -39,6 +39,16 @@
     
     table.dataTable tbody tr:hover {
         background-color: #f9fafb;
+        cursor: pointer;
+    }
+    
+    table.dataTable tbody tr.selected {
+        background-color: #dbeafe !important;
+        border-left: 4px solid #3b82f6;
+    }
+    
+    table.dataTable tbody tr.selected:hover {
+        background-color: #bfdbfe !important;
     }
     
     /* Status badge - minimal */
@@ -184,7 +194,27 @@
                         <i class="fas fa-undo mr-2"></i>Reset Filter
                     </button>
                 </div>
+
+                <!-- Tombol Ringkasan -->
+                <div class="flex items-end">
+                    <button onclick="window.location.href='{{ route('data-pengiriman.ringkasan-page') }}'" class="w-full bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition text-sm font-medium">
+                        <i class="fas fa-chart-bar mr-2"></i>Ringkasan Mingguan
+                    </button>
+                </div>
             </div>
+        </div>
+
+        <!-- Action Buttons (Hidden by default, shown when row is selected) -->
+        <div id="action-buttons" class="hidden mb-4 flex gap-3">
+            <button onclick="showDetailModal()" class="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition font-medium shadow-md">
+                <i class="fas fa-info-circle mr-2"></i>Detail Data
+            </button>
+            <button onclick="confirmDelete()" class="bg-red-600 text-white px-5 py-2 rounded-lg hover:bg-red-700 transition font-medium shadow-md">
+                <i class="fas fa-trash mr-2"></i>Hapus Data
+            </button>
+            <button onclick="clearSelection()" class="bg-gray-500 text-white px-5 py-2 rounded-lg hover:bg-gray-600 transition font-medium shadow-md">
+                <i class="fas fa-times mr-2"></i>Batal
+            </button>
         </div>
 
         <div class="overflow-x-auto">
@@ -216,6 +246,36 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Detail Data -->
+<div id="detailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+        <!-- Modal Header -->
+        <div class="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4 flex justify-between items-center">
+            <h3 class="text-xl font-bold text-white">
+                <i class="fas fa-info-circle mr-2"></i>Detail Data Pengiriman
+            </h3>
+            <button onclick="closeDetailModal()" class="text-white hover:text-gray-200 transition">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+        
+        <!-- Modal Body -->
+        <div class="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="detailContent">
+                <!-- Content will be loaded here -->
+            </div>
+        </div>
+        
+        <!-- Modal Footer -->
+        <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t">
+            <button onclick="closeDetailModal()" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition font-medium">
+                <i class="fas fa-times mr-2"></i>Tutup
+            </button>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
@@ -335,7 +395,24 @@ $(document).ready(function() {
     $('#filter-start-date, #filter-end-date, #filter-status-swp, #filter-kecamatan').on('change', function() {
         table.ajax.reload();
     });
+    
+    // Row click handler - Select row
+    $('#shipment-table tbody').on('click', 'tr', function() {
+        if ($(this).hasClass('selected')) {
+            $(this).removeClass('selected');
+            $('#action-buttons').addClass('hidden');
+            window.selectedRowData = null;
+        } else {
+            table.$('tr.selected').removeClass('selected');
+            $(this).addClass('selected');
+            $('#action-buttons').removeClass('hidden');
+            window.selectedRowData = table.row(this).data();
+        }
+    });
 });
+
+// Store selected row data globally
+window.selectedRowData = null;
 
 function loadStats() {
     $.ajax({
@@ -385,5 +462,134 @@ function resetFilters() {
         notification.remove();
     }, 3000);
 }
+
+function clearSelection() {
+    $('#shipment-table tbody tr.selected').removeClass('selected');
+    $('#action-buttons').addClass('hidden');
+    window.selectedRowData = null;
+}
+
+function showDetailModal() {
+    if (!window.selectedRowData) {
+        alert('Pilih data terlebih dahulu!');
+        return;
+    }
+    
+    const data = window.selectedRowData;
+    
+    // Build detail content
+    const detailFields = [
+        { label: 'NOSI', value: data.nosi },
+        { label: 'Status Kiriman', value: data.status_kiriman },
+        { label: 'Produk', value: data.produk },
+        { label: 'SLA', value: data.sla },
+        { label: 'Kantor Kirim', value: data.kantor_kirim },
+        { label: 'Tanggal Kirim', value: data.tgl_kirim },
+        { label: 'Tanggal Antaran', value: data.tgl_antaran_pertama },
+        { label: 'Tanggal Update', value: data.tgl_update },
+        { label: 'Petugas', value: data.petugas },
+        { label: 'Nama Penerima', value: data.nama_penerima },
+        { label: 'Alamat', value: data.alamat },
+        { label: 'Kota/Kecamatan', value: data.kota },
+        { label: 'Berat', value: data.berat },
+        { label: 'Posisi Saat Ini', value: data.posisi_saat_ini },
+        { label: 'Alasan Gagal', value: data.alasan_gagal },
+        { label: 'Alasan Irregulitas', value: data.alasan_irregulitas },
+        { label: 'Status SWP', value: data.status_swp },
+        { label: 'Cek', value: data.cek }
+    ];
+    
+    let html = '';
+    detailFields.forEach(field => {
+        const value = field.value || '-';
+        html += `
+            <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                <div class="text-xs text-gray-500 font-medium mb-1">${field.label}</div>
+                <div class="text-sm text-gray-900 font-semibold">${value}</div>
+            </div>
+        `;
+    });
+    
+    $('#detailContent').html(html);
+    $('#detailModal').removeClass('hidden');
+}
+
+function closeDetailModal() {
+    $('#detailModal').addClass('hidden');
+}
+
+function confirmDelete() {
+    if (!window.selectedRowData) {
+        alert('Pilih data terlebih dahulu!');
+        return;
+    }
+    
+    const data = window.selectedRowData;
+    const nosi = data.nosi || 'N/A';
+    
+    if (confirm(`Hapus data dengan NOSI: ${nosi}?\n\nData yang sudah dihapus tidak bisa dikembalikan!`)) {
+        deleteData(data.id);
+    }
+}
+
+function deleteData(id) {
+    // Show loading notification
+    const loadingNotif = document.createElement('div');
+    loadingNotif.id = 'delete-loading';
+    loadingNotif.className = 'fixed top-20 right-6 bg-blue-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+    loadingNotif.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Menghapus data...';
+    document.body.appendChild(loadingNotif);
+    
+    $.ajax({
+        url: "/data-pengiriman/" + id,
+        type: 'DELETE',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        success: function(response) {
+            // Remove loading
+            $('#delete-loading').remove();
+            
+            // Clear selection
+            clearSelection();
+            
+            // Refresh table
+            $('#shipment-table').DataTable().ajax.reload(null, false);
+            loadStats();
+            
+            // Show success notification
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-20 right-6 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+            notification.innerHTML = '<i class="fas fa-check-circle mr-2"></i>' + response.message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        },
+        error: function(xhr) {
+            // Remove loading
+            $('#delete-loading').remove();
+            
+            // Show error notification
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-20 right-6 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+            const message = xhr.responseJSON?.message || 'Gagal menghapus data!';
+            notification.innerHTML = '<i class="fas fa-times-circle mr-2"></i>' + message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+    });
+}
+
+// Close modal on ESC key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeDetailModal();
+    }
+});
 </script>
 @endpush
