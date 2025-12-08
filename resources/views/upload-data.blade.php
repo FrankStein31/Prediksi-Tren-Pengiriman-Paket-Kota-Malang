@@ -388,19 +388,29 @@ async function processFile() {
                 const percent = Math.round((progress.current / progress.total) * 80) + 15; // 15-95%
                 updateProgress(percent, `Mengecek duplikat: ${progress.current}/${progress.total}`);
                 
+                // Debug: log progress data
+                console.log('Progress data:', progress);
+                
                 // Display new logs from array
                 if (progress.logs && Array.isArray(progress.logs)) {
+                    console.log('Logs array length:', progress.logs.length, 'Last count:', lastLogCount);
+                    
                     // Only add new logs (not already displayed)
                     if (progress.logs.length > lastLogCount) {
                         const newLogs = progress.logs.slice(lastLogCount);
+                        console.log('Adding', newLogs.length, 'new logs');
+                        
                         newLogs.forEach(logEntry => {
                             const timestamp = logEntry.timestamp || new Date().toLocaleTimeString();
                             const message = logEntry.message || logEntry;
                             const type = logEntry.type || 'info';
+                            console.log('Adding log:', message, type);
                             addProgressLog(`[${timestamp}] ${message}`, type);
                         });
                         lastLogCount = progress.logs.length;
                     }
+                } else {
+                    console.log('No logs array in progress data');
                 }
             }
         } catch (e) {
@@ -590,19 +600,29 @@ async function importData() {
                 const percent = Math.round((progress.current / progress.total) * 85) + 10; // 10-95%
                 updateProgress(percent, `Import data: ${progress.current}/${progress.total}`);
                 
+                // Debug: log import progress data
+                console.log('Import progress data:', progress);
+                
                 // Display new logs from array
                 if (progress.logs && Array.isArray(progress.logs)) {
+                    console.log('Import logs array length:', progress.logs.length, 'Last count:', lastImportLogCount);
+                    
                     // Only add new logs (not already displayed)
                     if (progress.logs.length > lastImportLogCount) {
                         const newLogs = progress.logs.slice(lastImportLogCount);
+                        console.log('Adding', newLogs.length, 'new import logs');
+                        
                         newLogs.forEach(logEntry => {
                             const timestamp = logEntry.timestamp || new Date().toLocaleTimeString();
                             const message = logEntry.message || logEntry;
                             const type = logEntry.type || 'info';
+                            console.log('Adding import log:', message, type);
                             addProgressLog(`[${timestamp}] ${message}`, type);
                         });
                         lastImportLogCount = progress.logs.length;
                     }
+                } else {
+                    console.log('No logs array in import progress data');
                 }
             }
         } catch (e) {
