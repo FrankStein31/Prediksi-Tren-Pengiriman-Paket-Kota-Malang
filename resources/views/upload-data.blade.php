@@ -563,10 +563,34 @@ async function importData() {
     }
     
     document.getElementById('progress-container').classList.remove('hidden');
+    clearProgressLog();
     updateProgress(10, 'Memulai import...');
+    addProgressLog('[' + new Date().toLocaleTimeString() + '] Memulai proses import ke database...', 'info');
     document.getElementById('import-btn').disabled = true;
     
+    // Start polling for import progress
+    let importInterval = setInterval(async () => {
+        try {
+            const progressResponse = await fetch('{{ route("data.upload.progress") }}');
+            const progress = await progressResponse.json();
+            
+            if (progress.status === 'importing' && progress.total > 0) {
+                const percent = Math.round((progress.current / progress.total) * 85) + 10; // 10-95%
+                updateProgress(percent, `Import data: ${progress.current}/${progress.total}`);
+                
+                // Add log if there's a new log message
+                if (progress.log) {
+                    addProgressLog('[' + new Date().toLocaleTimeString() + '] ' + progress.log, 'info');
+                }
+            }
+        } catch (e) {
+            console.log('Import polling error:', e);
+        }
+    }, 100); // Poll every 100ms
+    
     try {
+        addProgressLog('[' + new Date().toLocaleTimeString() + '] Mengirim data ke server...', 'info');
+        
         const response = await fetch('{{ route("data.upload.import") }}', {
             method: 'POST',
             headers: {
@@ -578,7 +602,11 @@ async function importData() {
             })
         });
         
-        updateProgress(100, 'Import selesai!');
+        // Stop polling
+        clearInterval(importInterval);
+        
+        updateProgress(95, 'Menyelesaikan...');
+        addProgressLog('[' + new Date().toLocaleTimeString() + '] Memproses hasil import...', 'info');
         
         if (!response.ok) {
             throw new Error('Gagal import data');
@@ -586,16 +614,20 @@ async function importData() {
         
         const result = await response.json();
         
+        updateProgress(100, 'Import selesai!');
+        addProgressLog('[' + new Date().toLocaleTimeString() + '] ✓ Import berhasil! Total: ' + result.imported + ' data tersimpan', 'success');
+        
         setTimeout(() => {
             alert(`Berhasil import ${result.imported} data baru!`);
             window.location.href = '{{ route("data.pengiriman") }}';
-        }, 1000);
+        }, 1500);
         
     } catch (error) {
+        clearInterval(importInterval);
         console.error('Error:', error);
+        addProgressLog('[' + new Date().toLocaleTimeString() + '] ✗ ERROR: ' + error.message, 'error');
         alert('Gagal import data: ' + error.message);
         document.getElementById('import-btn').disabled = false;
-        document.getElementById('progress-container').classList.add('hidden');
     }
 }
 
