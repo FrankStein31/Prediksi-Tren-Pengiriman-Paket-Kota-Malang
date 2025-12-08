@@ -33,6 +33,27 @@ class UploadDataController extends Controller
     }
     
     /**
+     * Get upload progress for real-time updates
+     */
+    public function getProgress()
+    {
+        $sessionId = session()->getId();
+        $progressFile = storage_path("app/upload_progress_{$sessionId}.json");
+        
+        if (file_exists($progressFile)) {
+            $content = file_get_contents($progressFile);
+            return response()->json(json_decode($content, true));
+        }
+        
+        return response()->json([
+            'status' => 'idle',
+            'current' => 0,
+            'total' => 0,
+            'log' => ''
+        ]);
+    }
+    
+    /**
      * Process uploaded file and check for duplicates
      */
     public function process(Request $request)
@@ -43,6 +64,20 @@ class UploadDataController extends Controller
         
         $file = $request->file('file');
         $extension = $file->getClientOriginalExtension();
+        
+        // Initialize progress tracking
+        $sessionId = session()->getId();
+        $progressFile = storage_path("app/upload_progress_{$sessionId}.json");
+        file_put_contents($progressFile, json_encode([
+            'status' => 'reading',
+            'current' => 0,
+            'total' => 0,
+            'log' => 'Memulai membaca file...'
+        ]));
+        
+        // Increase memory limit and execution time
+        ini_set('memory_limit', '1024M');
+        set_time_limit(300); // 5 minutes
         
         try {
             // Store file info in session for later use in import
@@ -64,9 +99,19 @@ class UploadDataController extends Controller
             // Check for duplicates
             $result = $this->checkDuplicates($data);
             
+            // Cleanup progress file
+            if (file_exists($progressFile)) {
+                unlink($progressFile);
+            }
+            
             return response()->json($result);
             
         } catch (\Exception $e) {
+            // Cleanup progress file on error
+            if (file_exists($progressFile)) {
+                unlink($progressFile);
+            }
+            
             return response()->json([
                 'error' => 'Gagal memproses file: ' . $e->getMessage()
             ], 500);
@@ -277,6 +322,10 @@ class UploadDataController extends Controller
         \Log::info('Total rows to check: ' . count($data));
         \Log::info('Checking duplicates based on NOSI only');
         
+        // Get session ID for progress tracking
+        $sessionId = session()->getId();
+        $progressFile = storage_path("app/upload_progress_{$sessionId}.json");
+        
         foreach ($data as $index => $row) {
             // Check if NOSI exists in database
             $nosi = $row['nosi'] ?? null;
@@ -288,7 +337,25 @@ class UploadDataController extends Controller
             
             // Log info untuk SETIAP baris
             $status = $exists ? 'DUPLIKAT' : 'BARU';
-            \Log::info("Row " . ($index + 1) . ": NOSI={$nosi} | Status={$status}");
+            $logMessage = "Row " . ($index + 1) . ": NOSI={$nosi} | Status={$status}";
+            \Log::info($logMessage);
+            
+            // Update progress with log
+            $progressData = [
+                'current' => $index + 1,
+                'total' => count($data),
+                'status' => 'processing',
+                'log' => $logMessage,
+                'duplicate_count' => $duplicateCount,
+                'new_count' => count($newData)
+            ];
+            
+            if (file_exists($progressFile)) {
+                file_put_contents($progressFile, json_encode($progressData));
+            }
+            
+            // Small delay to allow frontend to poll
+            usleep(10000); // 10ms delay
             
             // Add flags to the row (must be stored back to $data array)
             $data[$index]['is_duplicate'] = $exists;
