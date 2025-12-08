@@ -240,25 +240,70 @@ class UploadDataController extends Controller
      */
     private function readCsv($file)
     {
+        // Map column headers to database columns
+        $columnMapping = [
+            'nosi' => ['nosi', 'no si', 'no_si'],
+            'posisi_saat_ini' => ['posisi saat ini', 'posisi_saat_ini', 'posisi'],
+            'status_kiriman' => ['status kiriman', 'status_kiriman', 'status'],
+            'produk' => ['produk', 'product'],
+            'sla' => ['sla'],
+            'kantor_kirim' => ['kantor kirim', 'kantor_kirim'],
+            'tgl_kirim' => ['tgl kirim', 'tgl_kirim', 'tanggal kirim'],
+            'tgl_antaran_pertama' => ['tgl antaran pertama', 'tgl_antaran_pertama', 'tanggal antaran'],
+            'tgl_update' => ['tgl update', 'tgl_update', 'tanggal update'],
+            'petugas' => ['petugas', 'kurir'],
+            'nama_penerima' => ['nama penerima', 'nama_penerima', 'penerima'],
+            'alamat' => ['alamat', 'alamat ', 'address'], // Note: includes 'alamat ' with trailing space
+            'kota' => ['kota', 'kecamatan', 'city'],
+            'alasan_gagal' => ['alasan gagal', 'alasan_gagal'],
+            'alasan_irregulitas' => ['alasan irregulitas', 'alasan_irregulitas'],
+            'status_swp' => ['status swp', 'status_swp'],
+            'berat' => ['berat', 'weight'],
+            'cek' => ['cek', 'check'],
+        ];
+        
         $csv = Reader::createFromPath($file->getPathname(), 'r');
         $csv->setHeaderOffset(0);
+        
+        // Get raw headers
+        $rawHeaders = $csv->getHeader();
+        
+        // Normalize headers
+        $normalizedHeaders = [];
+        foreach ($rawHeaders as $header) {
+            $normalizedHeader = strtolower(trim($header));
+            $mappedColumn = null;
+            
+            // Find matching database column
+            foreach ($columnMapping as $dbColumn => $variants) {
+                if (in_array($normalizedHeader, $variants)) {
+                    $mappedColumn = $dbColumn;
+                    break;
+                }
+            }
+            
+            $normalizedHeaders[$header] = $mappedColumn ?: $normalizedHeader;
+        }
         
         $records = $csv->getRecords();
         $data = [];
         
         foreach ($records as $record) {
-            // Convert date formats
-            if (isset($record['tgl_kirim'])) {
-                $record['tgl_kirim'] = $this->convertDate($record['tgl_kirim']);
-            }
-            if (isset($record['tgl_antaran_pertama'])) {
-                $record['tgl_antaran_pertama'] = $this->convertDate($record['tgl_antaran_pertama']);
-            }
-            if (isset($record['tgl_update'])) {
-                $record['tgl_update'] = $this->convertDate($record['tgl_update']);
+            $normalizedRecord = [];
+            
+            // Map each column to normalized name
+            foreach ($record as $originalColumn => $value) {
+                $normalizedColumn = $normalizedHeaders[$originalColumn] ?? strtolower(trim($originalColumn));
+                
+                // Convert date formats
+                if (in_array($normalizedColumn, ['tgl_kirim', 'tgl_antaran_pertama', 'tgl_update']) && $value) {
+                    $value = $this->convertDate($value);
+                }
+                
+                $normalizedRecord[$normalizedColumn] = $value;
             }
             
-            $data[] = $record;
+            $data[] = $normalizedRecord;
         }
         
         return $data;
