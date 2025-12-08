@@ -371,6 +371,9 @@ class UploadDataController extends Controller
         $sessionId = session()->getId();
         $progressFile = storage_path("app/upload_progress_{$sessionId}.json");
         
+        // Initialize log array in progress file
+        $logMessages = [];
+        
         foreach ($data as $index => $row) {
             // Check if NOSI exists in database
             $nosi = $row['nosi'] ?? null;
@@ -385,12 +388,25 @@ class UploadDataController extends Controller
             $logMessage = "Row " . ($index + 1) . ": NOSI={$nosi} | Status={$status}";
             \Log::info($logMessage);
             
+            // Add to log array (keep last 100 logs to avoid memory issues)
+            $logMessages[] = [
+                'message' => $logMessage,
+                'type' => $exists ? 'warning' : 'info',
+                'timestamp' => date('H:i:s')
+            ];
+            
+            // Keep only last 100 logs
+            if (count($logMessages) > 100) {
+                array_shift($logMessages);
+            }
+            
             // Update progress with log
             $progressData = [
                 'current' => $index + 1,
                 'total' => count($data),
                 'status' => 'processing',
-                'log' => $logMessage,
+                'log' => $logMessage, // Current log for status bar
+                'logs' => $logMessages, // Array of recent logs for terminal
                 'duplicate_count' => $duplicateCount,
                 'new_count' => count($newData)
             ];
@@ -511,6 +527,7 @@ class UploadDataController extends Controller
             // Import in chunks for better performance
             $chunks = array_chunk($data, 100); // Process 100 rows at a time
             $processedRows = 0;
+            $logMessages = [];
             
             foreach ($chunks as $chunkIndex => $chunk) {
                 foreach ($chunk as $row) {
@@ -532,26 +549,42 @@ class UploadDataController extends Controller
                         ShipmentData::create($row);
                         $imported++;
                         $status = 'INSERTED';
+                        $logType = 'success';
                     } else {
                         $skipped++;
                         $status = 'SKIPPED';
+                        $logType = 'warning';
                     }
                     
-                    // Log every 10 rows
-                    if ($processedRows % 10 === 0 || $processedRows === $totalRows) {
-                        $logMessage = "Import progress: {$processedRows}/{$totalRows} | Inserted: {$imported} | Skipped: {$skipped}";
-                        \Log::info($logMessage);
-                        
-                        // Update progress file
-                        file_put_contents($progressFile, json_encode([
-                            'status' => 'importing',
-                            'current' => $processedRows,
-                            'total' => $totalRows,
-                            'log' => $logMessage,
-                            'imported' => $imported,
-                            'skipped' => $skipped
-                        ]));
+                    // Create detailed log message for each row
+                    $detailedLog = "Row {$processedRows}: NOSI={$nosi} | Status={$status}";
+                    \Log::info($detailedLog);
+                    
+                    // Add to log array
+                    $logMessages[] = [
+                        'message' => $detailedLog,
+                        'type' => $logType,
+                        'timestamp' => date('H:i:s')
+                    ];
+                    
+                    // Keep only last 100 logs
+                    if (count($logMessages) > 100) {
+                        array_shift($logMessages);
                     }
+                    
+                    // Summary log message
+                    $summaryLog = "Import progress: {$processedRows}/{$totalRows} | Inserted: {$imported} | Skipped: {$skipped}";
+                    
+                    // Update progress file with logs array
+                    file_put_contents($progressFile, json_encode([
+                        'status' => 'importing',
+                        'current' => $processedRows,
+                        'total' => $totalRows,
+                        'log' => $summaryLog,
+                        'logs' => $logMessages,
+                        'imported' => $imported,
+                        'skipped' => $skipped
+                    ]));
                     
                     // Small delay to allow frontend polling
                     usleep(5000); // 5ms delay
