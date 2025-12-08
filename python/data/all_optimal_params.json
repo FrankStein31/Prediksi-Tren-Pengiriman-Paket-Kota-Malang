@@ -1,0 +1,128 @@
+{
+    "sarima": {
+        "KEDUNGKANDANG": {
+            "order": [
+                2,
+                1,
+                2
+            ],
+            "seasonal_order": [
+                1,
+                1,
+                1,
+                52
+            ]
+        },
+        "SUKUN": {
+            "order": [
+                1,
+                0,
+                1
+            ],
+            "seasonal_order": [
+                0,
+                1,
+                0,
+                52
+            ]
+        },
+        "BLIMBING": {
+            "order": [
+                2,
+                1,
+                1
+            ],
+            "seasonal_order": [
+                1,
+                0,
+                1,
+                52
+            ]
+        },
+        "LOWOKWARU": {
+            "order": [
+                1,
+                1,
+                2
+            ],
+            "seasonal_order": [
+                1,
+                1,
+                0,
+                52
+            ]
+        },
+        "KLOJEN": {
+            "order": [
+                0,
+                1,
+                1
+            ],
+            "seasonal_order": [
+                1,
+                0,
+                1,
+                52
+            ]
+        }
+    },
+    "prophet": {
+        "KEDUNGKANDANG": {
+            "changepoint_prior_scale": 1.0,
+            "seasonality_prior_scale": 0.1,
+            "seasonality_mode": "additive",
+            "n_changepoints": 150
+        },
+        "SUKUN": {
+            "changepoint_prior_scale": 0.05,
+            "seasonality_prior_scale": 0.01,
+            "seasonality_mode": "multiplicative",
+            "n_changepoints": 10
+        },
+        "BLIMBING": {
+            "changepoint_prior_scale": 1.0,
+            "seasonality_prior_scale": 0.5,
+            "seasonality_mode": "additive",
+            "n_changepoints": 50
+        },
+        "LOWOKWARU": {
+            "changepoint_prior_scale": 1.0,
+            "seasonality_prior_scale": 0.05,
+            "seasonality_mode": "additive",
+            "n_changepoints": 75
+        },
+        "KLOJEN": {
+            "changepoint_prior_scale": 0.001,
+            "seasonality_prior_scale": 0.05,
+            "seasonality_mode": "multiplicative",
+            "n_changepoints": 100
+        }
+    },
+    "holtwinters": {
+        "BLIMBING": {
+            "trend": "mul",
+            "seasonal": "add",
+            "damped_trend": true
+        },
+        "KEDUNGKANDANG": {
+            "trend": "add",
+            "seasonal": "add",
+            "damped_trend": false
+        },
+        "KLOJEN": {
+            "trend": "add",
+            "seasonal": "mul",
+            "damped_trend": false
+        },
+        "LOWOKWARU": {
+            "trend": "mul",
+            "seasonal": "add",
+            "damped_trend": true
+        },
+        "SUKUN": {
+            "trend": "add",
+            "seasonal": "add",
+            "damped_trend": false
+        }
+    }
+}
