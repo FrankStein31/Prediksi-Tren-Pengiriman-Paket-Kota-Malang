@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\Models\ShipmentData;
 use App\Models\UploadHistory;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
+use App\Services\ChunkReadFilter;
 use League\Csv\Reader;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
@@ -76,16 +78,8 @@ class UploadDataController extends Controller
      */
     private function readExcel($file)
     {
-        $spreadsheet = IOFactory::load($file->getPathname());
-        $worksheet = $spreadsheet->getActiveSheet();
-        $rows = $worksheet->toArray();
-        
-        if (empty($rows)) {
-            throw new \Exception('File kosong');
-        }
-        
-        // Get headers (first row)
-        $headers = array_shift($rows);
+        $chunkSize = 1000; // Read 1000 rows at a time
+        $data = [];
         
         // Map column headers to database columns
         $columnMapping = [
@@ -109,34 +103,88 @@ class UploadDataController extends Controller
             'cek' => ['cek', 'check'],
         ];
         
-        // Normalize headers
-        $normalizedHeaders = array_map(function($header) use ($columnMapping) {
-            $header = strtolower(trim($header));
-            foreach ($columnMapping as $dbColumn => $variants) {
-                if (in_array($header, $variants)) {
-                    return $dbColumn;
-                }
-            }
-            return $header;
-        }, $headers);
-        
-        // Convert rows to associative array
-        $data = [];
-        foreach ($rows as $row) {
-            if (empty(array_filter($row))) continue; // Skip empty rows
+        try {
+            // Step 1: Read headers only (first row)
+            $reader = IOFactory::createReader(IOFactory::identify($file->getPathname()));
+            $reader->setReadDataOnly(true);
+            $reader->setReadEmptyCells(false);
             
-            $rowData = [];
-            foreach ($normalizedHeaders as $index => $column) {
-                $value = isset($row[$index]) ? $row[$index] : null;
+            $headerFilter = new ChunkReadFilter(1, 1);
+            $reader->setReadFilter($headerFilter);
+            $spreadsheet = $reader->load($file->getPathname());
+            $worksheet = $spreadsheet->getActiveSheet();
+            $headers = $worksheet->toArray()[0] ?? [];
+            
+            if (empty($headers)) {
+                throw new \Exception('File kosong atau tidak memiliki header');
+            }
+            
+            // Normalize headers
+            $normalizedHeaders = array_map(function($header) use ($columnMapping) {
+                $header = strtolower(trim($header));
+                foreach ($columnMapping as $dbColumn => $variants) {
+                    if (in_array($header, $variants)) {
+                        return $dbColumn;
+                    }
+                }
+                return $header;
+            }, $headers);
+            
+            // Free memory
+            $spreadsheet->disconnectWorksheets();
+            unset($spreadsheet, $worksheet);
+            gc_collect_cycles();
+            
+            // Step 2: Read data in chunks
+            $startRow = 2; // Skip header
+            $hasMoreRows = true;
+            
+            while ($hasMoreRows) {
+                $chunkFilter = new ChunkReadFilter($startRow, $chunkSize);
+                $reader = IOFactory::createReader(IOFactory::identify($file->getPathname()));
+                $reader->setReadDataOnly(true);
+                $reader->setReadEmptyCells(false);
+                $reader->setReadFilter($chunkFilter);
                 
-                // Convert date formats
-                if (in_array($column, ['tgl_kirim', 'tgl_antaran_pertama', 'tgl_update']) && $value) {
-                    $value = $this->convertDate($value);
+                $spreadsheet = $reader->load($file->getPathname());
+                $worksheet = $spreadsheet->getActiveSheet();
+                $chunkRows = $worksheet->toArray();
+                
+                $rowCount = 0;
+                foreach ($chunkRows as $row) {
+                    if (empty(array_filter($row))) continue; // Skip empty rows
+                    
+                    $rowData = [];
+                    foreach ($normalizedHeaders as $index => $column) {
+                        $value = isset($row[$index]) ? $row[$index] : null;
+                        
+                        // Convert date formats
+                        if (in_array($column, ['tgl_kirim', 'tgl_antaran_pertama', 'tgl_update']) && $value) {
+                            $value = $this->convertDate($value);
+                        }
+                        
+                        $rowData[$column] = $value;
+                    }
+                    $data[] = $rowData;
+                    $rowCount++;
                 }
                 
-                $rowData[$column] = $value;
+                // Free memory after each chunk
+                $spreadsheet->disconnectWorksheets();
+                unset($spreadsheet, $worksheet, $chunkRows);
+                gc_collect_cycles();
+                
+                // Check if we got fewer rows than chunk size (last chunk)
+                if ($rowCount < $chunkSize) {
+                    $hasMoreRows = false;
+                } else {
+                    $startRow += $chunkSize;
+                }
             }
-            $data[] = $rowData;
+            
+        } catch (\Exception $e) {
+            Log::error('Chunk reading failed: ' . $e->getMessage());
+            throw $e;
         }
         
         return $data;
@@ -179,12 +227,26 @@ class UploadDataController extends Controller
         if (empty($date)) return null;
         
         try {
-            // Try various formats
+            // Handle Excel serial date numbers (e.g., 45887)
+            if (is_numeric($date)) {
+                // Check if it's a valid Excel date (between 1900 and 2100)
+                if ($date > 1 && $date < 73050) {
+                    $unixTimestamp = Date::excelToTimestamp($date);
+                    return date('Y-m-d', $unixTimestamp);
+                }
+            }
+            
+            // Handle DateTime objects from PhpSpreadsheet
+            if ($date instanceof \DateTime) {
+                return $date->format('Y-m-d');
+            }
+            
+            // Try various string date formats
             $formats = ['Y-m-d', 'd/m/Y', 'd-m-Y', 'm/d/Y', 'Y/m/d'];
             
             foreach ($formats as $format) {
                 $parsed = \DateTime::createFromFormat($format, $date);
-                if ($parsed !== false) {
+                if ($parsed !== false && $parsed->format($format) === $date) {
                     return $parsed->format('Y-m-d');
                 }
             }
@@ -195,9 +257,10 @@ class UploadDataController extends Controller
                 return date('Y-m-d', $timestamp);
             }
             
-            return $date;
+            return null;
         } catch (\Exception $e) {
-            return $date;
+            \Log::warning('Date conversion failed: ' . $e->getMessage());
+            return null;
         }
     }
     
