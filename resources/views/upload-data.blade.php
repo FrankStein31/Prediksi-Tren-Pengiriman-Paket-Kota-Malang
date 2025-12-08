@@ -378,6 +378,7 @@ async function processFile() {
     addProgressLog('[' + new Date().toLocaleTimeString() + '] Memulai upload file...', 'info');
     
     // Start polling for progress
+    let lastLogCount = 0;
     let progressInterval = setInterval(async () => {
         try {
             const progressResponse = await fetch('{{ route("data.upload.progress") }}');
@@ -387,9 +388,19 @@ async function processFile() {
                 const percent = Math.round((progress.current / progress.total) * 80) + 15; // 15-95%
                 updateProgress(percent, `Mengecek duplikat: ${progress.current}/${progress.total}`);
                 
-                // Add log if there's a new log message
-                if (progress.log) {
-                    addProgressLog('[' + new Date().toLocaleTimeString() + '] ' + progress.log, 'info');
+                // Display new logs from array
+                if (progress.logs && Array.isArray(progress.logs)) {
+                    // Only add new logs (not already displayed)
+                    if (progress.logs.length > lastLogCount) {
+                        const newLogs = progress.logs.slice(lastLogCount);
+                        newLogs.forEach(logEntry => {
+                            const timestamp = logEntry.timestamp || new Date().toLocaleTimeString();
+                            const message = logEntry.message || logEntry;
+                            const type = logEntry.type || 'info';
+                            addProgressLog(`[${timestamp}] ${message}`, type);
+                        });
+                        lastLogCount = progress.logs.length;
+                    }
                 }
             }
         } catch (e) {
@@ -569,6 +580,7 @@ async function importData() {
     document.getElementById('import-btn').disabled = true;
     
     // Start polling for import progress
+    let lastImportLogCount = 0;
     let importInterval = setInterval(async () => {
         try {
             const progressResponse = await fetch('{{ route("data.upload.progress") }}');
@@ -578,9 +590,19 @@ async function importData() {
                 const percent = Math.round((progress.current / progress.total) * 85) + 10; // 10-95%
                 updateProgress(percent, `Import data: ${progress.current}/${progress.total}`);
                 
-                // Add log if there's a new log message
-                if (progress.log) {
-                    addProgressLog('[' + new Date().toLocaleTimeString() + '] ' + progress.log, 'info');
+                // Display new logs from array
+                if (progress.logs && Array.isArray(progress.logs)) {
+                    // Only add new logs (not already displayed)
+                    if (progress.logs.length > lastImportLogCount) {
+                        const newLogs = progress.logs.slice(lastImportLogCount);
+                        newLogs.forEach(logEntry => {
+                            const timestamp = logEntry.timestamp || new Date().toLocaleTimeString();
+                            const message = logEntry.message || logEntry;
+                            const type = logEntry.type || 'info';
+                            addProgressLog(`[${timestamp}] ${message}`, type);
+                        });
+                        lastImportLogCount = progress.logs.length;
+                    }
                 }
             }
         } catch (e) {
