@@ -32,6 +32,7 @@ Route::get('/visualisasi', function () {
 Route::get('/upload', [UploadDataController::class, 'index'])->name('upload');
 Route::get('/upload/history', [UploadDataController::class, 'history'])->name('upload.history');
 Route::post('/upload/process', [UploadDataController::class, 'process'])->name('data.upload.process');
+Route::get('/upload/progress', [UploadDataController::class, 'getProgress'])->name('data.upload.progress');
 Route::get('/upload/preview-data', [UploadDataController::class, 'getPreviewData'])->name('data.upload.preview');
 Route::post('/upload/import', [UploadDataController::class, 'import'])->name('data.upload.import');
 

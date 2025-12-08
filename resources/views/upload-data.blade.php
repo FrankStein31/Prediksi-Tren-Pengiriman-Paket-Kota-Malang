@@ -108,6 +108,25 @@
         padding: 20px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
+    
+    /* Terminal Log Scrollbar */
+    #progress-log::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    #progress-log::-webkit-scrollbar-track {
+        background: #1f2937;
+        border-radius: 4px;
+    }
+    
+    #progress-log::-webkit-scrollbar-thumb {
+        background: #4b5563;
+        border-radius: 4px;
+    }
+    
+    #progress-log::-webkit-scrollbar-thumb:hover {
+        background: #6b7280;
+    }
 </style>
 @endpush
 
@@ -170,6 +189,21 @@
             </div>
             <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                 <div id="progress-bar" class="progress-bar bg-blue-600 h-3 rounded-full" style="width: 0%"></div>
+            </div>
+            
+            <!-- Terminal Log Box -->
+            <div class="mt-4">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-sm font-medium text-gray-700">
+                        <i class="fas fa-terminal mr-1"></i>Log Progress
+                    </span>
+                    <button onclick="clearProgressLog()" class="text-xs text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-eraser mr-1"></i>Clear Log
+                    </button>
+                </div>
+                <div id="progress-log" class="bg-gray-900 text-green-400 p-3 rounded-lg font-mono text-xs h-32 overflow-y-auto border border-gray-700" style="font-family: 'Courier New', monospace;">
+                    <div id="progress-log-content"></div>
+                </div>
             </div>
         </div>
 
@@ -339,9 +373,33 @@ async function processFile() {
     
     // Show progress
     document.getElementById('progress-container').classList.remove('hidden');
+    clearProgressLog();
     updateProgress(10, 'Mengupload file...');
+    addProgressLog('[' + new Date().toLocaleTimeString() + '] Memulai upload file...', 'info');
+    
+    // Start polling for progress
+    let progressInterval = setInterval(async () => {
+        try {
+            const progressResponse = await fetch('{{ route("data.upload.progress") }}');
+            const progress = await progressResponse.json();
+            
+            if (progress.status === 'processing' && progress.total > 0) {
+                const percent = Math.round((progress.current / progress.total) * 80) + 15; // 15-95%
+                updateProgress(percent, `Mengecek duplikat: ${progress.current}/${progress.total}`);
+                
+                // Add log if there's a new log message
+                if (progress.log) {
+                    addProgressLog('[' + new Date().toLocaleTimeString() + '] ' + progress.log, 'info');
+                }
+            }
+        } catch (e) {
+            console.log('Polling error (normal during initial upload):', e);
+        }
+    }, 100); // Poll every 100ms
     
     try {
+        addProgressLog('[' + new Date().toLocaleTimeString() + '] Mengirim file ke server...', 'info');
+        
         const response = await fetch('{{ route("data.upload.process") }}', {
             method: 'POST',
             headers: {
@@ -350,7 +408,11 @@ async function processFile() {
             body: formData
         });
         
-        updateProgress(50, 'Memproses data...');
+        // Stop polling
+        clearInterval(progressInterval);
+        
+        updateProgress(95, 'Menyelesaikan...');
+        addProgressLog('[' + new Date().toLocaleTimeString() + '] Memproses hasil...', 'info');
         
         if (!response.ok) {
             throw new Error('Gagal memproses file');
@@ -359,20 +421,17 @@ async function processFile() {
         const result = await response.json();
         
         updateProgress(100, 'Selesai!');
-        
-        // Hide progress after 1 second
-        setTimeout(() => {
-            document.getElementById('progress-container').classList.add('hidden');
-        }, 1000);
+        addProgressLog('[' + new Date().toLocaleTimeString() + '] Proses selesai! Total: ' + result.total_rows + ' | Baru: ' + result.new_rows + ' | Duplikat: ' + result.duplicate_rows, 'success');
         
         // Show preview
         previewData = result.data;
         displayPreview(result);
         
     } catch (error) {
+        clearInterval(progressInterval);
         console.error('Error:', error);
+        addProgressLog('[' + new Date().toLocaleTimeString() + '] ERROR: ' + error.message, 'error');
         alert('Gagal memproses file: ' + error.message);
-        document.getElementById('progress-container').classList.add('hidden');
     }
 }
 
@@ -380,6 +439,29 @@ function updateProgress(percent, text) {
     document.getElementById('progress-bar').style.width = percent + '%';
     document.getElementById('progress-percent').textContent = percent + '%';
     document.getElementById('progress-text').textContent = text;
+}
+
+function addProgressLog(message, type = 'info') {
+    const logContent = document.getElementById('progress-log-content');
+    const logEntry = document.createElement('div');
+    logEntry.className = 'mb-1';
+    
+    // Color based on type
+    let color = 'text-green-400'; // default
+    if (type === 'error') color = 'text-red-400';
+    else if (type === 'success') color = 'text-blue-400';
+    else if (type === 'warning') color = 'text-yellow-400';
+    
+    logEntry.innerHTML = `<span class="${color}">${message}</span>`;
+    logContent.appendChild(logEntry);
+    
+    // Auto scroll to bottom
+    const logDiv = document.getElementById('progress-log');
+    logDiv.scrollTop = logDiv.scrollHeight;
+}
+
+function clearProgressLog() {
+    document.getElementById('progress-log-content').innerHTML = '';
 }
 
 let previewTable = null;
