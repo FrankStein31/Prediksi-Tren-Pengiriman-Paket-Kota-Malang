@@ -440,19 +440,37 @@ class UploadDataController extends Controller
             return response()->json(['error' => 'Tidak ada data untuk diimport'], 400);
         }
         
+        // Initialize progress tracking for import
+        $sessionId = session()->getId();
+        $progressFile = storage_path("app/upload_progress_{$sessionId}.json");
+        
         try {
             $imported = 0;
             $skipped = 0;
+            $totalRows = count($data);
+            
+            \Log::info('=== STARTING IMPORT ===');
+            \Log::info('Total rows to import: ' . $totalRows);
+            
+            file_put_contents($progressFile, json_encode([
+                'status' => 'importing',
+                'current' => 0,
+                'total' => $totalRows,
+                'log' => 'Memulai import data...'
+            ]));
             
             // Get file info from session
             $fileInfo = session('upload_file_info', []);
             $allData = session('upload_preview', []);
             
             // Import in chunks for better performance
-            $chunks = array_chunk($data, 500);
+            $chunks = array_chunk($data, 100); // Process 100 rows at a time
+            $processedRows = 0;
             
-            foreach ($chunks as $chunk) {
+            foreach ($chunks as $chunkIndex => $chunk) {
                 foreach ($chunk as $row) {
+                    $processedRows++;
+                    
                     // Remove flags
                     unset($row['is_duplicate']);
                     unset($row['status']);
@@ -468,15 +486,38 @@ class UploadDataController extends Controller
                     if (!$exists) {
                         ShipmentData::create($row);
                         $imported++;
+                        $status = 'INSERTED';
                     } else {
                         $skipped++;
+                        $status = 'SKIPPED';
                     }
+                    
+                    // Log every 10 rows
+                    if ($processedRows % 10 === 0 || $processedRows === $totalRows) {
+                        $logMessage = "Import progress: {$processedRows}/{$totalRows} | Inserted: {$imported} | Skipped: {$skipped}";
+                        \Log::info($logMessage);
+                        
+                        // Update progress file
+                        file_put_contents($progressFile, json_encode([
+                            'status' => 'importing',
+                            'current' => $processedRows,
+                            'total' => $totalRows,
+                            'log' => $logMessage,
+                            'imported' => $imported,
+                            'skipped' => $skipped
+                        ]));
+                    }
+                    
+                    // Small delay to allow frontend polling
+                    usleep(5000); // 5ms delay
                 }
                 
-                // Small delay to prevent memory issues
-                usleep(10000); // 10ms
+                // Memory cleanup after each chunk
                 gc_collect_cycles();
             }
+            
+            \Log::info('=== IMPORT COMPLETE ===');
+            \Log::info("Total: {$totalRows} | Imported: {$imported} | Skipped: {$skipped}");
             
             // Save upload history to database
             UploadHistory::create([
@@ -494,6 +535,11 @@ class UploadDataController extends Controller
             session()->forget('upload_preview');
             session()->forget('upload_file_info');
             
+            // Cleanup progress file
+            if (file_exists($progressFile)) {
+                unlink($progressFile);
+            }
+            
             return response()->json([
                 'success' => true,
                 'imported' => $imported,
@@ -501,6 +547,13 @@ class UploadDataController extends Controller
             ]);
             
         } catch (\Exception $e) {
+            \Log::error('Import failed: ' . $e->getMessage());
+            
+            // Cleanup progress file on error
+            if (file_exists($progressFile)) {
+                unlink($progressFile);
+            }
+            
             return response()->json([
                 'error' => 'Gagal import data: ' . $e->getMessage()
             ], 500);
