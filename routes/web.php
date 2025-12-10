@@ -24,9 +24,9 @@ Route::get('/data-pengiriman/ringkasan-breakdown', [ShipmentDataController::clas
 Route::get('/data-pengiriman/ringkasan-years', [ShipmentDataController::class, 'getRingkasanYears'])->name('data-pengiriman.ringkasan-years');
 Route::delete('/data-pengiriman/{id}', [ShipmentDataController::class, 'destroy'])->name('data.pengiriman.destroy');
 
-Route::get('/visualisasi', function () {
-    return view('visualisasi');
-})->name('visualisasi');
+// Visualisasi Routes
+Route::get('/visualisasi', [App\Http\Controllers\VisualisasiController::class, 'index'])->name('visualisasi');
+Route::post('/visualisasi/data', [App\Http\Controllers\VisualisasiController::class, 'getPredictionData'])->name('visualisasi.data');
 
 // Upload Data Routes
 Route::get('/upload', [UploadDataController::class, 'index'])->name('upload');
