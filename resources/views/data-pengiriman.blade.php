@@ -144,7 +144,7 @@
 
         <!-- Filters Section -->
         <div class="bg-gray-50 rounded-lg p-4 mb-6 border border-gray-200">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                 <!-- Filter Tanggal Mulai -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -187,20 +187,19 @@
                         <option value="SUKUN">Sukun</option>
                     </select>
                 </div>
+            </div>
 
-                <!-- Tombol Reset -->
-                <div class="flex items-end">
-                    <button onclick="resetFilters()" class="w-full bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition text-sm font-medium">
-                        <i class="fas fa-undo mr-2"></i>Reset Filter
-                    </button>
-                </div>
+            <!-- Action Buttons Row -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <!-- Reset Filter -->
+                <button onclick="resetFilters()" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition text-sm font-medium">
+                    <i class="fas fa-undo mr-2"></i>Reset Filter
+                </button>
 
-                <!-- Tombol Ringkasan -->
-                <div class="flex items-end">
-                    <button onclick="window.location.href='{{ route('data-pengiriman.ringkasan-page') }}'" class="w-full bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition text-sm font-medium">
-                        <i class="fas fa-chart-bar mr-2"></i>Ringkasan Mingguan
-                    </button>
-                </div>
+                <!-- Ringkasan Mingguan (with Auto-Aggregation) -->
+                <button onclick="window.location.href='{{ route('data-pengiriman.ringkasan-page') }}'" class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-2 rounded-lg hover:from-purple-700 hover:to-indigo-700 transition text-sm font-medium shadow-md">
+                    <i class="fas fa-chart-bar mr-2"></i>Ringkasan Mingguan
+                </button>
             </div>
         </div>
 

@@ -299,14 +299,20 @@ function loadAllDistrictsTotal() {
             // Destroy existing DataTable if exists
             if ($.fn.DataTable.isDataTable('#ringkasan-table')) {
                 ringkasanTable.destroy();
+                $('#ringkasan-table').empty(); // Clear all table content
             }
             
-            // Build table header for total view
-            $('#table-header-row').html(`
-                <th style="width: 60px;">No</th>
-                <th style="width: 150px;">Kecamatan</th>
-                <th style="width: 150px;">Total Paket</th>
-                <th style="width: 200px;">Persentase</th>
+            // Rebuild table structure with header and body for total view
+            $('#ringkasan-table').html(`
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">No</th>
+                        <th style="width: 150px;">Kecamatan</th>
+                        <th style="width: 150px;">Total Paket</th>
+                        <th style="width: 200px;">Persentase</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
             `);
             
             // Initialize DataTable (CLIENT-SIDE for speed)
@@ -411,16 +417,22 @@ function loadDistrictBreakdown(kecamatan, year) {
             // Destroy existing DataTable if exists
             if ($.fn.DataTable.isDataTable('#ringkasan-table')) {
                 ringkasanTable.destroy();
+                $('#ringkasan-table').empty(); // Clear all table content
             }
             
-            // Build table header for breakdown view
-            $('#table-header-row').html(`
-                <th style="width: 60px;">No</th>
-                <th style="width: 100px;">Tahun</th>
-                <th style="width: 120px;">Minggu Ke</th>
-                <th style="width: 180px;">Tanggal</th>
-                <th style="width: 250px;">Hari Libur / Hari Raya</th>
-                <th style="width: 130px;">Total Paket</th>
+            // Rebuild table structure with header and body for breakdown view
+            $('#ringkasan-table').html(`
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">No</th>
+                        <th style="width: 100px;">Tahun</th>
+                        <th style="width: 120px;">Minggu Ke</th>
+                        <th style="width: 180px;">Tanggal</th>
+                        <th style="width: 250px;">Hari Libur / Hari Raya</th>
+                        <th style="width: 130px;">Total Paket</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
             `);
             
             // Initialize DataTable (CLIENT-SIDE for speed)
