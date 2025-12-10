@@ -171,80 +171,56 @@ class ShipmentDataController extends Controller
 
     /**
      * Display ringkasan mingguan page
+     * NEW LOGIC: Auto-aggregate if new data exists, then display from weekly_shipment_data table
      */
     public function ringkasanPage()
     {
+        // Auto-check and aggregate new data for all kecamatan
+        $this->autoAggregateIfNeeded();
+        
         return view('ringkasan-mingguan');
     }
 
     /**
-     * Get weekly summary by kecamatan
+     * Auto-aggregate if there's new shipment data that hasn't been aggregated yet
      */
-    public function getRingkasan(Request $request)
+    private function autoAggregateIfNeeded()
     {
-        $date = $request->input('date');
+        $kecamatans = ['BLIMBING', 'KEDUNGKANDANG', 'KLOJEN', 'LOWOKWARU', 'SUKUN'];
         
-        if (!$date) {
-            return response()->json(['error' => 'Tanggal tidak valid'], 400);
+        foreach ($kecamatans as $kecamatan) {
+            // Get latest date in weekly_shipment_data for this kecamatan
+            $latestWeekly = \App\Models\WeeklyShipmentData::where('kecamatan', $kecamatan)
+                ->orderBy('week_end', 'desc')
+                ->first();
+            
+            // Get latest date in shipment_data for this kecamatan
+            $latestShipment = ShipmentData::whereRaw("TRIM(SUBSTRING_INDEX(kota, ',', -1)) = ?", [$kecamatan])
+                ->orderBy('tgl_kirim', 'desc')
+                ->first();
+            
+            // If no weekly data yet OR shipment data is newer, trigger aggregation
+            if (!$latestWeekly || ($latestShipment && $latestShipment->tgl_kirim > $latestWeekly->week_end)) {
+                // Call aggregation service
+                $service = new \App\Services\WeeklyDataAggregationService();
+                $service->aggregateWeeklyData($kecamatan);
+            }
         }
-        
-        $dateObj = new \DateTime($date);
-        
-        // Get week number (ISO 8601 week)
-        $weekNumber = (int) $dateObj->format('W');
-        $year = (int) $dateObj->format('Y');
-        
-        // Get start and end of week
-        $dto = new \DateTime();
-        $dto->setISODate($year, $weekNumber);
-        $weekStart = $dto->format('Y-m-d');
-        
-        $dto->modify('+6 days');
-        $weekEnd = $dto->format('Y-m-d');
-        
-        // Get data for that week, grouped by kecamatan
-        $data = ShipmentData::selectRaw("
-            TRIM(SUBSTRING_INDEX(kota, ',', -1)) as kecamatan,
-            COUNT(*) as total_paket
-        ")
-        ->whereBetween('tgl_kirim', [$weekStart, $weekEnd])
-        ->whereRaw("TRIM(SUBSTRING_INDEX(kota, ',', -1)) != ''")
-        ->groupBy('kecamatan')
-        ->orderBy('total_paket', 'desc')
-        ->get();
-        
-        // Add minggu_ke to each row
-        $data = $data->map(function($item) use ($weekNumber) {
-            $item->minggu_ke = $weekNumber;
-            return $item;
-        });
-        
-        $totalPaket = $data->sum('total_paket');
-        $totalKecamatan = $data->count();
-        $avgPaket = $totalKecamatan > 0 ? $totalPaket / $totalKecamatan : 0;
-        
-        return response()->json([
-            'week_number' => $weekNumber,
-            'week_start' => \Carbon\Carbon::parse($weekStart)->format('d M Y'),
-            'week_end' => \Carbon\Carbon::parse($weekEnd)->format('d M Y'),
-            'total_paket' => $totalPaket,
-            'total_kecamatan' => $totalKecamatan,
-            'avg_paket' => $avgPaket,
-            'data' => $data
-        ]);
     }
+
+
 
     /**
      * Get total summary for all districts from all years
+     * NEW LOGIC: Read from weekly_shipment_data table (optimized)
      */
     public function getRingkasanTotal()
     {
-        // Get total data for each kecamatan from all years
-        $data = ShipmentData::selectRaw("
-            TRIM(SUBSTRING_INDEX(kota, ',', -1)) as kecamatan,
-            COUNT(*) as total_paket
+        // Get total data for each kecamatan from weekly_shipment_data table
+        $data = \App\Models\WeeklyShipmentData::selectRaw("
+            kecamatan,
+            SUM(total_paket) as total_paket
         ")
-        ->whereRaw("TRIM(SUBSTRING_INDEX(kota, ',', -1)) != ''")
         ->groupBy('kecamatan')
         ->orderBy('total_paket', 'desc')
         ->get();
@@ -263,6 +239,7 @@ class ShipmentDataController extends Controller
 
     /**
      * Get breakdown by year and week for specific district
+     * NEW LOGIC: Read from weekly_shipment_data table (optimized, no heavy query)
      */
     public function getRingkasanBreakdown(Request $request)
     {
@@ -273,68 +250,41 @@ class ShipmentDataController extends Controller
             return response()->json(['error' => 'Kecamatan tidak valid'], 400);
         }
         
-        // Create cache key based on filter
-        $cacheKey = 'ringkasan_breakdown_' . $kecamatan . '_' . ($year ?? 'all');
+        // Build query from weekly_shipment_data table
+        $query = \App\Models\WeeklyShipmentData::where('kecamatan', $kecamatan);
         
-        // Try to get from cache (5 minutes)
-        $data = Cache::remember($cacheKey, 300, function() use ($kecamatan, $year) {
-            // Build query with proper aggregation
-            $baseQuery = ShipmentData::whereRaw("TRIM(SUBSTRING_INDEX(kota, ',', -1)) = ?", [$kecamatan]);
-            
-            // If year is provided, filter by that specific year
-            if ($year && $year !== '') {
-                $baseQuery->whereYear('tgl_kirim', $year);
-            }
-            
-            // Get all data grouped by year and week
-            return $baseQuery
-                ->selectRaw("
-                    YEAR(tgl_kirim) as tahun,
-                    WEEK(tgl_kirim, 3) as minggu_ke,
-                    MIN(tgl_kirim) as min_date,
-                    MAX(tgl_kirim) as max_date,
-                    COUNT(*) as total_paket
-                ")
-                ->groupBy('tahun', 'minggu_ke')
-                ->orderBy('tahun', 'desc')
-                ->orderBy('minggu_ke', 'asc')
-                ->get();
-        });
+        // If year is provided, filter by that specific year
+        if ($year && $year !== '') {
+            $query->where('year', $year);
+        }
         
-        // Process and add holiday information (optimized)
+        // Get all data ordered by year and week
+        $data = $query
+            ->orderBy('year', 'desc')
+            ->orderBy('week_number', 'asc')
+            ->get();
+        
+        // Format data to match old format
         $data = $data->map(function($item) {
-            $startDate = \Carbon\Carbon::parse($item->min_date);
-            $endDate = \Carbon\Carbon::parse($item->max_date);
-            
-            // Safety check: if range > 7 days, calculate proper boundaries
-            $daysDiff = $startDate->diffInDays($endDate);
-            if ($daysDiff > 7) {
-                // Use ISO 8601 week calculation
-                $jan4 = \Carbon\Carbon::create($item->tahun, 1, 4);
-                $weekStart = $jan4->startOfWeek()->addWeeks($item->minggu_ke - 1);
-                $startDate = $weekStart->copy();
-                $endDate = $weekStart->copy()->addDays(6);
-            }
-            
-            // Format dates first
-            $item->tanggal_mulai = $startDate->format('d/m/Y');
-            $item->tanggal_akhir = $endDate->format('d/m/Y');
-            
-            // Get holiday (with try-catch for safety)
+            // Get holiday info if available
+            $hariLibur = '-';
             try {
-                $item->hari_libur = IndonesianHoliday::getHolidaySummary(
-                    $startDate->format('Y-m-d'),
-                    $endDate->format('Y-m-d')
+                $hariLibur = IndonesianHoliday::getHolidaySummary(
+                    $item->week_start->format('Y-m-d'),
+                    $item->week_end->format('Y-m-d')
                 );
             } catch (\Exception $e) {
-                $item->hari_libur = '-';
+                // Keep default if error
             }
             
-            // Remove temporary fields
-            unset($item->min_date);
-            unset($item->max_date);
-            
-            return $item;
+            return [
+                'tahun' => $item->year,
+                'minggu_ke' => $item->week_number,
+                'tanggal_mulai' => $item->week_start->format('d/m/Y'),
+                'tanggal_akhir' => $item->week_end->format('d/m/Y'),
+                'total_paket' => $item->total_paket,
+                'hari_libur' => $hariLibur
+            ];
         });
         
         $totalPaket = $data->sum('total_paket');
@@ -352,12 +302,11 @@ class ShipmentDataController extends Controller
     }
 
     /**
-     * Get available years from shipment data
+     * Get available years from weekly_shipment_data (optimized)
      */
     public function getRingkasanYears()
     {
-        $years = ShipmentData::selectRaw('DISTINCT YEAR(tgl_kirim) as year')
-            ->whereNotNull('tgl_kirim')
+        $years = \App\Models\WeeklyShipmentData::selectRaw('DISTINCT year')
             ->orderBy('year', 'desc')
             ->pluck('year');
         

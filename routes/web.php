@@ -18,7 +18,6 @@ Route::get('/data-pengiriman', [ShipmentDataController::class, 'index'])->name('
 Route::get('/data-pengiriman/getData', [ShipmentDataController::class, 'getData'])->name('data.pengiriman.getData');
 Route::get('/data-pengiriman/stats', [ShipmentDataController::class, 'getStats'])->name('data.pengiriman.stats');
 Route::get('/data-pengiriman/ringkasan-mingguan', [ShipmentDataController::class, 'ringkasanPage'])->name('data-pengiriman.ringkasan-page');
-Route::get('/data-pengiriman/ringkasan', [ShipmentDataController::class, 'getRingkasan'])->name('data-pengiriman.ringkasan');
 Route::get('/data-pengiriman/ringkasan-total', [ShipmentDataController::class, 'getRingkasanTotal'])->name('data-pengiriman.ringkasan-total');
 Route::get('/data-pengiriman/ringkasan-breakdown', [ShipmentDataController::class, 'getRingkasanBreakdown'])->name('data-pengiriman.ringkasan-breakdown');
 Route::get('/data-pengiriman/ringkasan-years', [ShipmentDataController::class, 'getRingkasanYears'])->name('data-pengiriman.ringkasan-years');
