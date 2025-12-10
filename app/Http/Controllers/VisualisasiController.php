@@ -42,31 +42,52 @@ class VisualisasiController extends Controller
         try {
             // Path to Python script
             $pythonScript = base_path('python/scripts/visualize_prophet.py');
-            $pythonPath = 'python'; // Or full path if needed
             
-            // Run Python script
-            $result = Process::run([
+            // Use Laragon Python path
+            $pythonPath = 'C:\\laragon\\bin\\python\\python-3.10\\python.exe';
+            
+            // Fallback to PATH if Laragon python not found
+            if (!file_exists($pythonPath)) {
+                $pythonPath = 'python';
+            }
+            
+            // Build command
+            $command = sprintf(
+                '"%s" "%s" --kecamatan "%s" --weeks_historical %d --weeks_forecast %d',
                 $pythonPath,
                 $pythonScript,
-                '--kecamatan', $kecamatan,
-                '--weeks_historical', $weeksHistorical,
-                '--weeks_forecast', $weeksForecast
-            ]);
+                $kecamatan,
+                $weeksHistorical,
+                $weeksForecast
+            );
+            
+            // Run Python script with timeout
+            $result = Process::timeout(120) // 2 minutes timeout
+                ->run($command);
             
             if (!$result->successful()) {
                 return response()->json([
                     'error' => 'Failed to generate prediction',
-                    'message' => $result->errorOutput()
+                    'message' => $result->errorOutput(),
+                    'command' => $command // For debugging
                 ], 500);
             }
             
             // Parse JSON output from Python
             $output = $result->output();
+            
+            // Remove any potential debug output before JSON
+            $jsonStart = strpos($output, '{');
+            if ($jsonStart !== false) {
+                $output = substr($output, $jsonStart);
+            }
+            
             $data = json_decode($output, true);
             
             if (json_last_error() !== JSON_ERROR_NONE) {
                 return response()->json([
                     'error' => 'Invalid JSON response from Python script',
+                    'json_error' => json_last_error_msg(),
                     'raw_output' => $output
                 ], 500);
             }
@@ -76,7 +97,8 @@ class VisualisasiController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'Error generating prediction',
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ], 500);
         }
     }
