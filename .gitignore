@@ -25,3 +25,12 @@ Thumbs.db
 
 # Large data files (>100MB - GitHub limit)
 /database/*.sql
+
+# Python Virtual Environment - JANGAN PUSH VENV!
+python/venv/
+python/__pycache__/
+python/**/__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.egg-info/
