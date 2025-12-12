@@ -26,6 +26,7 @@ Route::delete('/data-pengiriman/{id}', [ShipmentDataController::class, 'destroy'
 // Visualisasi Routes
 Route::get('/visualisasi', [App\Http\Controllers\VisualisasiController::class, 'index'])->name('visualisasi');
 Route::post('/visualisasi/data', [App\Http\Controllers\VisualisasiController::class, 'getPredictionData'])->name('visualisasi.data');
+Route::get('/api/holiday/{date}', [App\Http\Controllers\VisualisasiController::class, 'getHoliday'])->name('api.holiday');
 
 // Upload Data Routes
 Route::get('/upload', [UploadDataController::class, 'index'])->name('upload');

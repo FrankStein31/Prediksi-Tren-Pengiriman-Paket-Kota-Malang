@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Process;
 use Carbon\Carbon;
+use App\Helpers\IndonesianHoliday;
 
 class VisualisasiController extends Controller
 {
@@ -110,6 +111,45 @@ class VisualisasiController extends Controller
                 ], 500);
             }
             
+            // Add holiday information to forecast data
+            if (isset($data['forecast']) && is_array($data['forecast'])) {
+                \Log::info('Adding holiday info to ' . count($data['forecast']) . ' forecast items');
+                
+                foreach ($data['forecast'] as &$forecastItem) {
+                    if (isset($forecastItem['date'])) {
+                        try {
+                            $date = Carbon::parse($forecastItem['date']);
+                            
+                            // Get week start (Sunday) and week end (Saturday) for this date
+                            $weekStart = $date->copy()->startOfWeek(Carbon::SUNDAY);
+                            $weekEnd = $date->copy()->endOfWeek(Carbon::SATURDAY);
+                            
+                            // Get holiday summary for the entire week
+                            $holiday = IndonesianHoliday::getHolidaySummary(
+                                $weekStart->format('Y-m-d'),
+                                $weekEnd->format('Y-m-d')
+                            );
+                            
+                            $forecastItem['holiday'] = $holiday;
+                            $forecastItem['is_holiday'] = $holiday !== '-';
+                            
+                            \Log::info('Date: ' . $forecastItem['date'] . ' | Week: ' . $weekStart->format('Y-m-d') . ' to ' . $weekEnd->format('Y-m-d') . ' | Holiday: ' . $holiday);
+                        } catch (\Exception $e) {
+                            \Log::error('Error getting holiday for ' . $forecastItem['date'], [
+                                'error' => $e->getMessage()
+                            ]);
+                            $forecastItem['holiday'] = '-';
+                            $forecastItem['is_holiday'] = false;
+                        }
+                    }
+                }
+                unset($forecastItem); // Break reference
+                
+                \Log::info('Holiday info added. Sample:', [
+                    'first_item' => $data['forecast'][0] ?? null
+                ]);
+            }
+            
             return response()->json($data);
             
         } catch (\GuzzleHttp\Exception\ConnectException $e) {
@@ -145,6 +185,30 @@ class VisualisasiController extends Controller
                 'message' => $e->getMessage(),
                 'details' => 'Terjadi kesalahan pada server'
             ], 500);
+        }
+    }
+    
+    /**
+     * Get holiday information for a specific date
+     */
+    public function getHoliday($date)
+    {
+        try {
+            // Validate date format
+            $parsedDate = \Carbon\Carbon::parse($date);
+            
+            $holiday = IndonesianHoliday::getHoliday($parsedDate);
+            
+            return response()->json([
+                'date' => $parsedDate->format('Y-m-d'),
+                'holiday' => $holiday,
+                'is_holiday' => $holiday !== null
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Invalid date format',
+                'message' => $e->getMessage()
+            ], 400);
         }
     }
 }

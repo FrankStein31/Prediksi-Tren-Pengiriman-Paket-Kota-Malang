@@ -147,8 +147,8 @@
         </div>
     </div>
 
-    <!-- Statistics Cards -->
-    <div id="statistics-section" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <!-- Statistics Cards - Disabled -->
+    <!-- <div id="statistics-section" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
             <div class="flex items-center justify-between mb-2">
                 <i class="fas fa-box text-3xl opacity-80"></i>
@@ -184,7 +184,7 @@
             <h3 class="text-2xl font-bold mb-1" id="stat-weeks-total">56</h3>
             <p class="text-orange-100 text-sm">Total Minggu Ditampilkan</p>
         </div>
-    </div>
+    </div> -->
 
     <!-- Chart Section -->
     <div id="chart-section" class="hidden bg-white rounded-xl shadow-lg p-6">
@@ -251,6 +251,7 @@
                     <p class="font-semibold mb-1">Catatan:</p>
                     <ul class="list-disc list-inside space-y-1">
                         <li><strong>Prediksi:</strong> Nilai prediksi yang paling mungkin terjadi</li>
+                        <li><strong>Hari Libur:</strong> Hari libur nasional/hari raya yang jatuh pada minggu tersebut (mempengaruhi volume pengiriman)</li>
                         <li><strong>Aktual:</strong> Nilai sesungguhnya dari database (jika tersedia)</li>
                         <li><strong>Selisih:</strong> Perbedaan antara nilai aktual dan prediksi</li>
                         <li><strong>Akurasi:</strong> Persentase ketepatan prediksi (hijau ≥90%, kuning ≥80%, merah <80%)</li>
@@ -347,7 +348,7 @@ async function loadPrediction() {
     }
     
     // Hide previous results
-    document.getElementById('statistics-section').classList.add('hidden');
+    // document.getElementById('statistics-section').classList.add('hidden');
     document.getElementById('chart-section').classList.add('hidden');
     document.getElementById('forecast-table-section').classList.add('hidden');
     document.getElementById('error-section').classList.add('hidden');
@@ -387,7 +388,7 @@ async function loadPrediction() {
         }
         
         // Display data
-        displayStatistics(data.statistics);
+        // displayStatistics(data.statistics);
         displayChart(data);
         displayForecastTable(data.forecast, data.statistics.weeks_forecast);
         
@@ -398,14 +399,15 @@ async function loadPrediction() {
     }
 }
 
-function displayStatistics(stats) {
-    document.getElementById('stat-total-historical').textContent = stats.total_historical.toLocaleString('id-ID');
-    document.getElementById('stat-avg-weekly').textContent = stats.average_weekly.toLocaleString('id-ID');
-    document.getElementById('stat-total-forecast').textContent = stats.total_forecast.toLocaleString('id-ID');
-    document.getElementById('stat-weeks-total').textContent = (stats.weeks_historical + stats.weeks_forecast);
-    
-    document.getElementById('statistics-section').classList.remove('hidden');
-}
+// Statistics section disabled
+// function displayStatistics(stats) {
+//     document.getElementById('stat-total-historical').textContent = stats.total_historical.toLocaleString('id-ID');
+//     document.getElementById('stat-avg-weekly').textContent = stats.average_weekly.toLocaleString('id-ID');
+//     document.getElementById('stat-total-forecast').textContent = stats.total_forecast.toLocaleString('id-ID');
+//     document.getElementById('stat-weeks-total').textContent = (stats.weeks_historical + stats.weeks_forecast);
+//     
+//     document.getElementById('statistics-section').classList.remove('hidden');
+// }
 
 function displayChart(data) {
     const ctx = document.getElementById('prediction-chart').getContext('2d');
@@ -613,6 +615,10 @@ function displayChart(data) {
 }
 
 function displayForecastTable(forecastData, weeksCount) {
+    console.log('=== displayForecastTable called ===');
+    console.log('forecastData:', forecastData);
+    console.log('First item:', forecastData[0]);
+    
     const tableHeader = document.getElementById('table-header');
     const tableBody = document.getElementById('forecast-table-body');
     tableBody.innerHTML = ''; // Clear existing data
@@ -630,6 +636,9 @@ function displayForecastTable(forecastData, weeksCount) {
         </th>
         <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
             <i class="fas fa-calendar-week mr-2"></i>Minggu
+        </th>
+        <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+            <i class="fas fa-calendar-check mr-2"></i>Hari Libur
         </th>
         <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
             <i class="fas fa-chart-line mr-2"></i>Prediksi
@@ -686,6 +695,13 @@ function displayForecastTable(forecastData, weeksCount) {
                     <span class="px-2 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs font-medium">
                         ${weekInfo}
                     </span>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-700">
+                    ${item.is_holiday && item.holiday ? 
+                        `<i class="fas fa-calendar-check text-red-500 mr-1"></i>
+                         <span class="text-red-600 font-medium">${item.holiday}</span>` : 
+                        `<span class="text-gray-400 italic">-</span>`
+                    }
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-green-700">
                     <i class="fas fa-chart-line mr-1"></i>
