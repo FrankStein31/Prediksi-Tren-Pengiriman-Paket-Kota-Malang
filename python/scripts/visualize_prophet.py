@@ -32,14 +32,29 @@ def get_db_connection():
         print(json.dumps({'error': f'Database connection error: {str(e)}'}), file=sys.stderr)
         return None
 
-def load_historical_data(kecamatan, weeks_back=52):
-    """Load data historis dari database weekly_shipment_data"""
+def load_historical_data(kecamatan, weeks_back=52, reference_date=None):
+    """Load data historis dari database weekly_shipment_data
+    
+    Args:
+        kecamatan: Nama kecamatan
+        weeks_back: Jumlah minggu yang ingin ditampilkan
+        reference_date: Tanggal referensi (default: awal minggu ini)
+    """
     connection = get_db_connection()
     if connection is None:
         return None
     
     try:
-        # Query to get weekly data from database
+        # Use reference date or start of current week
+        if reference_date is None:
+            # Get start of current week (Monday)
+            today = datetime.now()
+            start_of_week = today - timedelta(days=today.weekday())
+            reference_date = start_of_week
+        else:
+            reference_date = pd.to_datetime(reference_date)
+        
+        # Query to get weekly data before reference date
         query = """
         SELECT 
             week_start,
@@ -48,12 +63,12 @@ def load_historical_data(kecamatan, weeks_back=52):
             week_number,
             total_paket
         FROM weekly_shipment_data
-        WHERE kecamatan = %s
+        WHERE kecamatan = %s AND week_start <= %s
         ORDER BY week_start DESC
         LIMIT %s
         """
         
-        df = pd.read_sql(query, connection, params=(kecamatan, weeks_back))
+        df = pd.read_sql(query, connection, params=(kecamatan, reference_date, weeks_back))
         connection.close()
         
         if df.empty:
@@ -90,11 +105,32 @@ def load_prophet_model(kecamatan):
         return None, f"Error loading model: {str(e)}"
 
 
-def generate_visualization_data(kecamatan, weeks_historical=52, weeks_forecast=4):
-    """Generate data untuk visualisasi chart menggunakan pre-trained model"""
+def generate_visualization_data(kecamatan, weeks_historical=52, weeks_forecast=4, reference_date=None, date_mode='realtime'):
+    """Generate data untuk visualisasi chart menggunakan pre-trained model
+    
+    Args:
+        kecamatan: Nama kecamatan
+        weeks_historical: Jumlah minggu historis (max 52)
+        weeks_forecast: Jumlah minggu prediksi (max 8)
+        reference_date: Tanggal referensi untuk custom date (bisa masa depan)
+        date_mode: 'realtime' atau 'custom'
+    """
+    
+    # Validate ranges
+    weeks_historical = min(max(weeks_historical, 4), 52)
+    weeks_forecast = min(max(weeks_forecast, 1), 8)
+    
+    # Determine reference date
+    if date_mode == 'custom' and reference_date is not None:
+        ref_date = pd.to_datetime(reference_date)
+    else:
+        # Real-time mode: use start of current week (Monday)
+        today = datetime.now()
+        start_of_week = today - timedelta(days=today.weekday())
+        ref_date = start_of_week
     
     # Load historical data from database
-    historical_df = load_historical_data(kecamatan, weeks_historical)
+    historical_df = load_historical_data(kecamatan, weeks_historical, ref_date)
     if historical_df is None:
         return {'error': f'Data historis untuk kecamatan {kecamatan} tidak ditemukan'}
     
@@ -179,17 +215,24 @@ def main():
                        choices=['BLIMBING', 'KEDUNGKANDANG', 'KLOJEN', 'LOWOKWARU', 'SUKUN'],
                        help='Kecamatan name')
     parser.add_argument('--weeks_historical', type=int, default=52,
-                       help='Number of historical weeks to show (default: 52)')
+                       help='Number of historical weeks to show (max: 52, default: 52)')
     parser.add_argument('--weeks_forecast', type=int, default=4,
-                       help='Number of weeks to forecast (default: 4)')
+                       help='Number of weeks to forecast (max: 8, default: 4)')
+    parser.add_argument('--date_mode', type=str, default='realtime',
+                       choices=['realtime', 'custom'],
+                       help='Date mode: realtime (today) or custom date')
+    parser.add_argument('--custom_date', type=str, default=None,
+                       help='Custom reference date (YYYY-MM-DD format)')
     
     args = parser.parse_args()
     
     # Generate data
     result = generate_visualization_data(
-        args.kecamatan,
-        args.weeks_historical,
-        args.weeks_forecast
+        kecamatan=args.kecamatan,
+        weeks_historical=args.weeks_historical,
+        weeks_forecast=args.weeks_forecast,
+        reference_date=args.custom_date,
+        date_mode=args.date_mode
     )
     
     # Output as JSON

@@ -13,7 +13,8 @@
                 </h1>
                 <p class="text-purple-100 text-lg">Analisis dan Prediksi Tren Pengiriman Paket dengan Model Prophet</p>
                 <p class="text-purple-200 text-sm mt-2">
-                    <i class="far fa-calendar-alt mr-2"></i>Menampilkan 52 minggu historis + 4 minggu prediksi
+                    <i class="far fa-calendar-alt mr-2"></i>Fleksibel: 4-52 minggu historis + 1-8 minggu prediksi | 
+                    <i class="fas fa-infinity mr-2"></i>Mendukung prediksi masa depan
                 </p>
             </div>
             <div class="hidden md:block">
@@ -27,42 +28,114 @@
 
     <!-- Filter Section -->
     <div class="bg-white rounded-xl shadow-lg p-6">
-        <div class="flex flex-wrap items-end gap-4">
-            <div class="flex-1 min-w-[200px]">
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                    <i class="fas fa-map-marker-alt mr-1 text-purple-600"></i>
-                    Pilih Kecamatan
-                </label>
-                <select id="kecamatan-select" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
-                    <option value="">-- Pilih Kecamatan --</option>
-                    @foreach($kecamatans as $kec)
-                    <option value="{{ $kec }}">{{ $kec }}</option>
-                    @endforeach
-                </select>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Left Column -->
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-map-marker-alt mr-1 text-purple-600"></i>
+                        Pilih Kecamatan
+                    </label>
+                    <select id="kecamatan-select" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                        <option value="">-- Pilih Kecamatan --</option>
+                        @foreach($kecamatans as $kec)
+                        <option value="{{ $kec }}">{{ $kec }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-calendar-alt mr-1 text-indigo-600"></i>
+                        Mode Tanggal
+                    </label>
+                    <div class="flex gap-2">
+                        <label class="flex items-center flex-1 cursor-pointer">
+                            <input type="radio" name="date-mode" value="realtime" checked 
+                                   onchange="toggleDateMode()"
+                                   class="w-4 h-4 text-purple-600 focus:ring-purple-500">
+                            <span class="ml-2 text-sm text-gray-700">
+                                <i class="fas fa-clock mr-1"></i>Real-time (Minggu Ini)
+                            </span>
+                        </label>
+                        <label class="flex items-center flex-1 cursor-pointer">
+                            <input type="radio" name="date-mode" value="custom" 
+                                   onchange="toggleDateMode()"
+                                   class="w-4 h-4 text-purple-600 focus:ring-purple-500">
+                            <span class="ml-2 text-sm text-gray-700">
+                                <i class="fas fa-calendar-day mr-1"></i>Custom Date
+                            </span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div id="custom-date-container" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-calendar mr-1 text-blue-600"></i>
+                        Pilih Tanggal Referensi
+                    </label>
+                    <input type="date" id="custom-date" 
+                           class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                    <p class="mt-1 text-xs text-gray-500">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Sistem akan menampilkan data historis sebelum tanggal ini dan prediksi setelahnya.
+                        Anda bisa pilih <strong>tanggal masa depan</strong> untuk melihat prediksi jangka panjang.
+                    </p>
+                </div>
             </div>
             
-            <div class="w-48">
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                    <i class="fas fa-history mr-1 text-blue-600"></i>
-                    Minggu Historis
-                </label>
-                <input type="number" id="weeks-historical" value="52" min="12" max="104" 
-                       class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+            <!-- Right Column -->
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-history mr-1 text-blue-600"></i>
+                            Minggu Historis
+                        </label>
+                        <input type="number" id="weeks-historical" value="52" min="4" max="52" 
+                               class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                        <p class="mt-1 text-xs text-gray-500">Max: 52 minggu</p>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-forward mr-1 text-green-600"></i>
+                            Minggu Prediksi
+                        </label>
+                        <input type="number" id="weeks-forecast" value="4" min="1" max="8" 
+                               class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                        <p class="mt-1 text-xs text-gray-500">Max: 8 minggu</p>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-4 border border-purple-200">
+                    <div class="flex items-start gap-3">
+                        <i class="fas fa-chart-line text-purple-600 text-xl mt-1"></i>
+                        <div class="flex-1">
+                            <p class="text-sm font-semibold text-gray-800 mb-1">Range Data:</p>
+                            <div class="text-xs text-gray-600 space-y-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
+                                    <span id="preview-historical">52 minggu historis</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                                    <span id="preview-forecast">4 minggu prediksi</span>
+                                </div>
+                                <div class="flex items-center gap-2 font-semibold text-purple-700">
+                                    <i class="fas fa-calendar-week"></i>
+                                    <span id="preview-total">Total: 56 minggu</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button onclick="loadPrediction()" 
+                        class="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-indigo-700 transition shadow-lg hover:shadow-xl">
+                    <i class="fas fa-chart-line mr-2"></i>Tampilkan Grafik Prediksi
+                </button>
             </div>
-            
-            <div class="w-48">
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                    <i class="fas fa-forward mr-1 text-green-600"></i>
-                    Minggu Prediksi
-                </label>
-                <input type="number" id="weeks-forecast" value="4" min="1" max="52" 
-                       class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
-            </div>
-            
-            <button onclick="loadPrediction()" 
-                    class="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-indigo-700 transition shadow-lg hover:shadow-xl">
-                <i class="fas fa-chart-line mr-2"></i>Tampilkan Grafik
-            </button>
         </div>
     </div>
 
@@ -164,14 +237,69 @@
 <script>
 let predictionChart = null;
 
+// Initialize date input with today's date
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('custom-date').value = today;
+    // Remove max date restriction to allow future dates
+    // document.getElementById('custom-date').max = today;
+    
+    // Update preview on input change
+    document.getElementById('weeks-historical').addEventListener('input', updatePreview);
+    document.getElementById('weeks-forecast').addEventListener('input', updatePreview);
+    updatePreview();
+});
+
+function toggleDateMode() {
+    const dateMode = document.querySelector('input[name="date-mode"]:checked').value;
+    const customDateContainer = document.getElementById('custom-date-container');
+    
+    if (dateMode === 'custom') {
+        customDateContainer.classList.remove('hidden');
+    } else {
+        customDateContainer.classList.add('hidden');
+    }
+}
+
+function updatePreview() {
+    const weeksHistorical = parseInt(document.getElementById('weeks-historical').value) || 52;
+    const weeksForecast = parseInt(document.getElementById('weeks-forecast').value) || 4;
+    
+    // Validate limits
+    const validHistorical = Math.min(Math.max(weeksHistorical, 4), 52);
+    const validForecast = Math.min(Math.max(weeksForecast, 1), 8);
+    
+    document.getElementById('preview-historical').textContent = `${validHistorical} minggu historis`;
+    document.getElementById('preview-forecast').textContent = `${validForecast} minggu prediksi`;
+    document.getElementById('preview-total').textContent = `Total: ${validHistorical + validForecast} minggu`;
+}
+
 async function loadPrediction() {
     const kecamatan = document.getElementById('kecamatan-select').value;
-    const weeksHistorical = document.getElementById('weeks-historical').value;
-    const weeksForecast = document.getElementById('weeks-forecast').value;
+    const weeksHistorical = parseInt(document.getElementById('weeks-historical').value);
+    const weeksForecast = parseInt(document.getElementById('weeks-forecast').value);
+    const dateMode = document.querySelector('input[name="date-mode"]:checked').value;
+    const customDate = document.getElementById('custom-date').value;
     
     // Validation
     if (!kecamatan) {
         alert('Pilih kecamatan terlebih dahulu!');
+        return;
+    }
+    
+    // Validate ranges
+    if (weeksHistorical < 4 || weeksHistorical > 52) {
+        alert('Minggu historis harus antara 4-52 minggu!');
+        return;
+    }
+    
+    if (weeksForecast < 1 || weeksForecast > 8) {
+        alert('Minggu prediksi harus antara 1-8 minggu!');
+        return;
+    }
+    
+    if (dateMode === 'custom' && !customDate) {
+        alert('Pilih tanggal custom terlebih dahulu!');
         return;
     }
     
@@ -184,17 +312,24 @@ async function loadPrediction() {
     document.getElementById('loading-indicator').classList.remove('hidden');
     
     try {
+        const payload = {
+            kecamatan: kecamatan,
+            weeks_historical: weeksHistorical,
+            weeks_forecast: weeksForecast,
+            date_mode: dateMode
+        };
+        
+        if (dateMode === 'custom') {
+            payload.custom_date = customDate;
+        }
+        
         const response = await fetch('{{ route("visualisasi.data") }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
             },
-            body: JSON.stringify({
-                kecamatan: kecamatan,
-                weeks_historical: parseInt(weeksHistorical),
-                weeks_forecast: parseInt(weeksForecast)
-            })
+            body: JSON.stringify(payload)
         });
         
         const data = await response.json();

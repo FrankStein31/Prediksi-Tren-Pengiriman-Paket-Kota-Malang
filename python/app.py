@@ -46,27 +46,61 @@ def get_db_connection():
         return None
 
 
-def load_historical_data(kecamatan, weeks_back=52):
-    """Load historical data from database"""
+def load_historical_data(kecamatan, weeks_back=52, reference_date=None, is_future_date=False):
+    """Load historical data from database
+    
+    Args:
+        kecamatan: Nama kecamatan
+        weeks_back: Jumlah minggu yang ingin ditampilkan
+        reference_date: Tanggal referensi (default: awal minggu ini)
+        is_future_date: True if reference_date is in the future
+    """
     connection = get_db_connection()
     if connection is None:
         return None
     
     try:
-        query = """
-        SELECT 
-            week_start,
-            week_end,
-            year,
-            week_number,
-            total_paket
-        FROM weekly_shipment_data
-        WHERE kecamatan = %s
-        ORDER BY week_start DESC
-        LIMIT %s
-        """
+        # Use reference date or start of current week
+        if reference_date is None:
+            # Get start of current week (Monday)
+            today = datetime.now()
+            start_of_week = today - timedelta(days=today.weekday())
+            reference_date = start_of_week
+        else:
+            reference_date = pd.to_datetime(reference_date)
         
-        df = pd.read_sql(query, connection, params=(kecamatan, weeks_back))
+        # For future dates, get the latest available data
+        if is_future_date:
+            query = """
+            SELECT 
+                week_start,
+                week_end,
+                year,
+                week_number,
+                total_paket
+            FROM weekly_shipment_data
+            WHERE kecamatan = %s
+            ORDER BY week_start DESC
+            LIMIT %s
+            """
+            logger.info(f'Future date detected. Loading latest {weeks_back} weeks of available data.')
+            df = pd.read_sql(query, connection, params=(kecamatan, weeks_back))
+        else:
+            # For past/current dates, filter by reference date
+            query = """
+            SELECT 
+                week_start,
+                week_end,
+                year,
+                week_number,
+                total_paket
+            FROM weekly_shipment_data
+            WHERE kecamatan = %s AND week_start <= %s
+            ORDER BY week_start DESC
+            LIMIT %s
+            """
+            df = pd.read_sql(query, connection, params=(kecamatan, reference_date, weeks_back))
+        
         connection.close()
         
         if df.empty:
@@ -170,7 +204,9 @@ def predict():
     {
         "kecamatan": "BLIMBING",
         "weeks_historical": 52,
-        "weeks_forecast": 4
+        "weeks_forecast": 4,
+        "date_mode": "realtime",  // or "custom"
+        "custom_date": "2023-10-10"  // optional, when date_mode=custom
     }
     """
     try:
@@ -183,6 +219,8 @@ def predict():
         kecamatan = data.get('kecamatan')
         weeks_historical = data.get('weeks_historical', 52)
         weeks_forecast = data.get('weeks_forecast', 4)
+        date_mode = data.get('date_mode', 'realtime')
+        custom_date = data.get('custom_date')
         
         # Validation
         if not kecamatan:
@@ -191,18 +229,64 @@ def predict():
         if kecamatan not in KECAMATANS:
             return jsonify({'error': f'Invalid kecamatan. Must be one of: {", ".join(KECAMATANS)}'}), 400
         
-        if not (12 <= weeks_historical <= 104):
-            return jsonify({'error': 'weeks_historical must be between 12 and 104'}), 400
+        # Validate ranges (max 52 historical, max 8 forecast)
+        if not (4 <= weeks_historical <= 52):
+            return jsonify({'error': 'weeks_historical must be between 4 and 52'}), 400
         
-        if not (1 <= weeks_forecast <= 52):
-            return jsonify({'error': 'weeks_forecast must be between 1 and 52'}), 400
+        if not (1 <= weeks_forecast <= 8):
+            return jsonify({'error': 'weeks_forecast must be between 1 and 8'}), 400
+        
+        if date_mode not in ['realtime', 'custom']:
+            return jsonify({'error': 'date_mode must be "realtime" or "custom"'}), 400
+        
+        # Determine reference date and check if it's in the future
+        is_future_date = False
+        if date_mode == 'custom':
+            if not custom_date:
+                return jsonify({'error': 'custom_date is required when date_mode is custom'}), 400
+            try:
+                reference_date = pd.to_datetime(custom_date)
+                # Check if reference date is in the future
+                today = datetime.now()
+                if reference_date > today:
+                    is_future_date = True
+                    logger.info(f'Future date detected: {reference_date.strftime("%Y-%m-%d")}')
+            except:
+                return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+        else:
+            # Real-time mode: use start of current week (Monday)
+            today = datetime.now()
+            start_of_week = today - timedelta(days=today.weekday())
+            reference_date = start_of_week
+            logger.info(f'Real-time mode: Using start of week {start_of_week.strftime("%Y-%m-%d")}')
         
         # Load historical data
-        logger.info(f'Loading data for {kecamatan}...')
-        historical_df = load_historical_data(kecamatan, weeks_historical)
+        logger.info(f'Loading data for {kecamatan} (mode: {date_mode}, is_future: {is_future_date})...')
+        historical_df = load_historical_data(kecamatan, weeks_historical, reference_date, is_future_date)
         
-        if historical_df is None:
+        if historical_df is None or historical_df.empty:
             return jsonify({'error': f'No historical data found for {kecamatan}'}), 404
+        
+        # If it's a future date, we need to predict from last data point to reference_date + weeks_forecast
+        if is_future_date:
+            # Get the last data point
+            last_data_date = historical_df['week_start'].max()
+            
+            # Calculate weeks between last data and reference date
+            weeks_gap = int((reference_date - last_data_date).days / 7)
+            
+            # Total forecast needed = weeks to reach reference_date + user requested forecast
+            total_forecast_weeks = weeks_gap + weeks_forecast
+            
+            logger.info(f'Last data: {last_data_date.strftime("%Y-%m-%d")}, '
+                       f'Reference: {reference_date.strftime("%Y-%m-%d")}, '
+                       f'Gap: {weeks_gap} weeks, '
+                       f'Total forecast: {total_forecast_weeks} weeks')
+            
+            # Update weeks_forecast for prediction
+            actual_forecast_weeks = total_forecast_weeks
+        else:
+            actual_forecast_weeks = weeks_forecast
         
         # Load model
         logger.info(f'Loading model for {kecamatan}...')
@@ -212,12 +296,12 @@ def predict():
             return jsonify({'error': error}), 404
         
         # Generate predictions
-        logger.info(f'Generating predictions for {kecamatan}...')
+        logger.info(f'Generating {actual_forecast_weeks} weeks of predictions for {kecamatan}...')
         last_date = historical_df['week_start'].max()
         
         future_dates = pd.date_range(
             start=last_date + timedelta(weeks=1),
-            periods=weeks_forecast,
+            periods=actual_forecast_weeks,
             freq='W'
         )
         
@@ -235,16 +319,28 @@ def predict():
             })
         
         # Prepare forecast data
+        # For future dates, only show forecast after reference_date
         forecast_data = []
         for idx, row in forecast.iterrows():
+            forecast_date = row['ds']
+            
+            # For future reference dates, only include forecasts after the reference date
+            if is_future_date:
+                if forecast_date < reference_date:
+                    continue  # Skip forecasts before reference date
+            
             forecast_data.append({
-                'date': row['ds'].strftime('%Y-%m-%d'),
+                'date': forecast_date.strftime('%Y-%m-%d'),
                 'predicted': max(0, int(round(row['yhat']))),
                 'lower_bound': max(0, int(round(row['yhat_lower']))),
                 'upper_bound': max(0, int(round(row['yhat_upper']))),
-                'week_number': row['ds'].isocalendar()[1],
-                'year': row['ds'].year
+                'week_number': forecast_date.isocalendar()[1],
+                'year': forecast_date.year
             })
+            
+            # Only show the requested number of forecast weeks
+            if len(forecast_data) >= weeks_forecast:
+                break
         
         # Calculate statistics
         total_historical = int(historical_df['total_paket'].sum())
@@ -255,6 +351,9 @@ def predict():
         response = {
             'success': True,
             'kecamatan': kecamatan,
+            'date_mode': date_mode,
+            'is_future_date': is_future_date,
+            'reference_date': reference_date.strftime('%Y-%m-%d') if isinstance(reference_date, (datetime, pd.Timestamp)) else reference_date,
             'historical': historical_data,
             'forecast': forecast_data,
             'statistics': {
@@ -271,7 +370,8 @@ def predict():
             'generated_at': datetime.now().isoformat()
         }
         
-        logger.info(f'Prediction generated successfully for {kecamatan}')
+        logger.info(f'Prediction generated successfully for {kecamatan} '
+                   f'(historical: {len(historical_data)}, forecast: {len(forecast_data)})')
         return jsonify(response)
         
     except Exception as e:

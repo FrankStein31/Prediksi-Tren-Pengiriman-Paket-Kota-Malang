@@ -31,13 +31,17 @@ class VisualisasiController extends Controller
     {
         $request->validate([
             'kecamatan' => 'required|string|in:BLIMBING,KEDUNGKANDANG,KLOJEN,LOWOKWARU,SUKUN',
-            'weeks_historical' => 'integer|min:12|max:104', // Default 52 weeks
-            'weeks_forecast' => 'integer|min:1|max:52',    // Default 4 weeks
+            'weeks_historical' => 'integer|min:4|max:52',  // Max 52 weeks
+            'weeks_forecast' => 'integer|min:1|max:8',     // Max 8 weeks
+            'date_mode' => 'required|string|in:realtime,custom',
+            'custom_date' => 'nullable|date'
         ]);
         
         $kecamatan = $request->input('kecamatan');
         $weeksHistorical = $request->input('weeks_historical', 52);
         $weeksForecast = $request->input('weeks_forecast', 4);
+        $dateMode = $request->input('date_mode', 'realtime');
+        $customDate = $request->input('custom_date');
         
         try {
             // Flask API URL
@@ -47,8 +51,13 @@ class VisualisasiController extends Controller
             $requestData = [
                 'kecamatan' => $kecamatan,
                 'weeks_historical' => (int)$weeksHistorical,
-                'weeks_forecast' => (int)$weeksForecast
+                'weeks_forecast' => (int)$weeksForecast,
+                'date_mode' => $dateMode
             ];
+            
+            if ($dateMode === 'custom' && $customDate) {
+                $requestData['custom_date'] = $customDate;
+            }
             
             // Make HTTP request to Flask API
             $client = new \GuzzleHttp\Client([
