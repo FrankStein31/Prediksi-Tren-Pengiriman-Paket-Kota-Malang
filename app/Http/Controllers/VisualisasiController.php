@@ -31,7 +31,7 @@ class VisualisasiController extends Controller
     {
         $request->validate([
             'kecamatan' => 'required|string|in:BLIMBING,KEDUNGKANDANG,KLOJEN,LOWOKWARU,SUKUN',
-            'weeks_historical' => 'integer|min:1|max:104', // Default 52 weeks
+            'weeks_historical' => 'integer|min:12|max:104', // Default 52 weeks
             'weeks_forecast' => 'integer|min:1|max:52',    // Default 4 weeks
         ]);
         
@@ -40,65 +40,101 @@ class VisualisasiController extends Controller
         $weeksForecast = $request->input('weeks_forecast', 4);
         
         try {
-            // Path to Python script
-            $pythonScript = base_path('python/scripts/visualize_prophet.py');
+            // Flask API URL
+            $apiUrl = 'http://127.0.0.1:5000/api/predict';
             
-            // Use Laragon Python path
-            $pythonPath = 'C:\\laragon\\bin\\python\\python-3.10\\python.exe';
+            // Prepare request data
+            $requestData = [
+                'kecamatan' => $kecamatan,
+                'weeks_historical' => (int)$weeksHistorical,
+                'weeks_forecast' => (int)$weeksForecast
+            ];
             
-            // Fallback to PATH if Laragon python not found
-            if (!file_exists($pythonPath)) {
-                $pythonPath = 'python';
-            }
+            // Make HTTP request to Flask API
+            $client = new \GuzzleHttp\Client([
+                'timeout' => 120, // 2 minutes timeout
+                'connect_timeout' => 10
+            ]);
             
-            // Build command
-            $command = sprintf(
-                '"%s" "%s" --kecamatan "%s" --weeks_historical %d --weeks_forecast %d',
-                $pythonPath,
-                $pythonScript,
-                $kecamatan,
-                $weeksHistorical,
-                $weeksForecast
-            );
+            $response = $client->post($apiUrl, [
+                'json' => $requestData,
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json'
+                ]
+            ]);
             
-            // Run Python script with timeout
-            $result = Process::timeout(120) // 2 minutes timeout
-                ->run($command);
+            $statusCode = $response->getStatusCode();
+            $body = $response->getBody()->getContents();
+            $data = json_decode($body, true);
             
-            if (!$result->successful()) {
+            if ($statusCode !== 200) {
+                \Log::error('Flask API error', [
+                    'status_code' => $statusCode,
+                    'response' => $data
+                ]);
+                
                 return response()->json([
                     'error' => 'Failed to generate prediction',
-                    'message' => $result->errorOutput(),
-                    'command' => $command // For debugging
+                    'message' => $data['error'] ?? $data['message'] ?? 'Unknown error',
+                    'details' => 'Pastikan Flask API sedang berjalan'
                 ], 500);
             }
             
-            // Parse JSON output from Python
-            $output = $result->output();
-            
-            // Remove any potential debug output before JSON
-            $jsonStart = strpos($output, '{');
-            if ($jsonStart !== false) {
-                $output = substr($output, $jsonStart);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                \Log::error('JSON decode error', [
+                    'error' => json_last_error_msg(),
+                    'body' => $body
+                ]);
+                
+                return response()->json([
+                    'error' => 'Invalid JSON response from API',
+                    'json_error' => json_last_error_msg()
+                ], 500);
             }
             
-            $data = json_decode($output, true);
-            
-            if (json_last_error() !== JSON_ERROR_NONE) {
+            // Check if API returned an error
+            if (isset($data['error']) || !isset($data['success']) || !$data['success']) {
                 return response()->json([
-                    'error' => 'Invalid JSON response from Python script',
-                    'json_error' => json_last_error_msg(),
-                    'raw_output' => $output
+                    'error' => $data['error'] ?? 'Unknown error',
+                    'message' => $data['message'] ?? ''
                 ], 500);
             }
             
             return response()->json($data);
             
+        } catch (\GuzzleHttp\Exception\ConnectException $e) {
+            \Log::error('Flask API connection error', [
+                'message' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'error' => 'Cannot connect to Flask API',
+                'message' => 'Pastikan Flask API server sedang berjalan di http://127.0.0.1:5000',
+                'details' => 'Jalankan: python app.py di folder python/'
+            ], 503);
+            
+        } catch (\GuzzleHttp\Exception\RequestException $e) {
+            \Log::error('Flask API request error', [
+                'message' => $e->getMessage(),
+                'response' => $e->hasResponse() ? $e->getResponse()->getBody()->getContents() : null
+            ]);
+            
+            return response()->json([
+                'error' => 'Flask API request failed',
+                'message' => $e->getMessage()
+            ], 500);
+            
         } catch (\Exception $e) {
+            \Log::error('Visualization error', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return response()->json([
                 'error' => 'Error generating prediction',
                 'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'details' => 'Terjadi kesalahan pada server'
             ], 500);
         }
     }

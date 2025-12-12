@@ -2,11 +2,13 @@
 """
 Script untuk visualisasi data historis dan prediksi Prophet
 Menampilkan 52 minggu historis + 4 minggu prediksi
+Menggunakan model Prophet yang sudah di-train (.pkl files)
 """
 
 import pandas as pd
 import numpy as np
 from prophet import Prophet
+import mysql.connector
 import joblib
 import os
 import sys
@@ -16,112 +18,121 @@ from datetime import datetime, timedelta
 import warnings
 warnings.filterwarnings('ignore')
 
-def load_model(kecamatan):
-    """Load model Prophet untuk kecamatan tertentu"""
+def get_db_connection():
+    """Create database connection"""
+    try:
+        connection = mysql.connector.connect(
+            host='localhost',
+            database='prediksi_paket',
+            user='root',
+            password=''
+        )
+        return connection
+    except Exception as e:
+        print(json.dumps({'error': f'Database connection error: {str(e)}'}), file=sys.stderr)
+        return None
+
+def load_historical_data(kecamatan, weeks_back=52):
+    """Load data historis dari database weekly_shipment_data"""
+    connection = get_db_connection()
+    if connection is None:
+        return None
+    
+    try:
+        # Query to get weekly data from database
+        query = """
+        SELECT 
+            week_start,
+            week_end,
+            year,
+            week_number,
+            total_paket
+        FROM weekly_shipment_data
+        WHERE kecamatan = %s
+        ORDER BY week_start DESC
+        LIMIT %s
+        """
+        
+        df = pd.read_sql(query, connection, params=(kecamatan, weeks_back))
+        connection.close()
+        
+        if df.empty:
+            return None
+        
+        # Sort ascending for time series
+        df = df.sort_values('week_start')
+        
+        # Ensure datetime
+        df['week_start'] = pd.to_datetime(df['week_start'])
+        df['week_end'] = pd.to_datetime(df['week_end'])
+        
+        return df
+        
+    except Exception as e:
+        if connection:
+            connection.close()
+        print(json.dumps({'error': f'Error loading data: {str(e)}'}), file=sys.stderr)
+        return None
+
+def load_prophet_model(kecamatan):
+    """Load pre-trained Prophet model dari file .pkl"""
     models_dir = os.path.join(os.path.dirname(__file__), '..', 'models')
     model_filename = f"prophet_model_{kecamatan.upper()}.pkl"
     model_path = os.path.join(models_dir, model_filename)
     
     if not os.path.exists(model_path):
-        return None
+        return None, f"Model file not found: {model_path}"
     
     try:
         model = joblib.load(model_path)
-        return model
+        return model, None
     except Exception as e:
-        print(json.dumps({'error': f'Error loading model: {str(e)}'}), file=sys.stderr)
-        return None
+        return None, f"Error loading model: {str(e)}"
 
-def load_historical_data(kecamatan, weeks_back=52):
-    """Load data historis dari CSV"""
-    data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
-    
-    # Try to load weekly aggregated data
-    weekly_file = os.path.join(data_dir, 'df_kecamatan_weekly.xlsx')
-    
-    try:
-        # Read Excel file
-        df = pd.read_excel(weekly_file)
-        
-        # Filter by kecamatan
-        df_kec = df[df['Kecamatan'] == kecamatan].copy()
-        
-        if df_kec.empty:
-            return None
-        
-        # Ensure Week_Start is datetime
-        df_kec['Week_Start'] = pd.to_datetime(df_kec['Week_Start'])
-        
-        # Sort by date
-        df_kec = df_kec.sort_values('Week_Start')
-        
-        # Get last N weeks
-        if len(df_kec) > weeks_back:
-            df_kec = df_kec.tail(weeks_back)
-        
-        return df_kec
-        
-    except Exception as e:
-        print(json.dumps({'error': f'Error loading data: {str(e)}'}), file=sys.stderr)
-        return None
 
 def generate_visualization_data(kecamatan, weeks_historical=52, weeks_forecast=4):
-    """Generate data untuk visualisasi chart"""
+    """Generate data untuk visualisasi chart menggunakan pre-trained model"""
     
-    # Load model
-    model = load_model(kecamatan)
-    if model is None:
-        return {'error': f'Model untuk kecamatan {kecamatan} tidak ditemukan'}
-    
-    # Load historical data
+    # Load historical data from database
     historical_df = load_historical_data(kecamatan, weeks_historical)
     if historical_df is None:
         return {'error': f'Data historis untuk kecamatan {kecamatan} tidak ditemukan'}
     
+    # Load pre-trained Prophet model
+    model, error = load_prophet_model(kecamatan)
+    if model is None:
+        return {'error': error}
+    
     try:
         # Get the last date in historical data
-        last_date = historical_df['Week_Start'].max()
+        last_date = historical_df['week_start'].max()
         
-        # Create future dates for forecast
+        # Create future dataframe starting from last_date + 1 week
         future_dates = pd.date_range(
             start=last_date + timedelta(weeks=1),
             periods=weeks_forecast,
-            freq='W-MON'
+            freq='W'
         )
         
-        # Create dataframe for Prophet prediction (ds, y format)
-        # Prophet needs historical data to make predictions
-        historical_prophet = pd.DataFrame({
-            'ds': historical_df['Week_Start'],
-            'y': historical_df['Total_Paket']
-        })
+        # Create dataframe for predictions
+        future_df = pd.DataFrame({'ds': future_dates})
         
-        # Create future dataframe for forecast
-        future_df = pd.DataFrame({
-            'ds': future_dates
-        })
-        
-        # Combine for prediction
-        full_df = pd.concat([historical_prophet, future_df], ignore_index=True)
-        
-        # Make predictions
-        forecast = model.predict(full_df)
+        # Make predictions for future dates only
+        forecast = model.predict(future_df)
         
         # Prepare historical data for chart
         historical_data = []
         for idx, row in historical_df.iterrows():
             historical_data.append({
-                'date': row['Week_Start'].strftime('%Y-%m-%d'),
-                'actual': int(row['Total_Paket']),
-                'week_number': row['Week_Start'].isocalendar()[1],
-                'year': row['Week_Start'].year
+                'date': row['week_start'].strftime('%Y-%m-%d'),
+                'actual': int(row['total_paket']),
+                'week_number': int(row['week_number']),
+                'year': int(row['year'])
             })
         
         # Prepare forecast data for chart
         forecast_data = []
-        forecast_future = forecast.tail(weeks_forecast)
-        
-        for idx, row in forecast_future.iterrows():
+        for idx, row in forecast.iterrows():
             forecast_data.append({
                 'date': row['ds'].strftime('%Y-%m-%d'),
                 'predicted': max(0, int(round(row['yhat']))),  # Ensure non-negative
@@ -132,8 +143,8 @@ def generate_visualization_data(kecamatan, weeks_historical=52, weeks_forecast=4
             })
         
         # Calculate statistics
-        total_historical = int(historical_df['Total_Paket'].sum())
-        avg_weekly = int(historical_df['Total_Paket'].mean())
+        total_historical = int(historical_df['total_paket'].sum())
+        avg_weekly = int(historical_df['total_paket'].mean())
         total_forecast = sum([d['predicted'] for d in forecast_data])
         
         # Prepare response

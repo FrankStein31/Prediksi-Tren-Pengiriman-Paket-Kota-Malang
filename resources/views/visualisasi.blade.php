@@ -233,12 +233,12 @@ function displayChart(data) {
     // Prepare labels and datasets
     const historicalLabels = data.historical.map(d => {
         const date = new Date(d.date);
-        return `W${d.week_number} ${date.getFullYear()}`;
+        return `W${d.week_number} '${date.getFullYear().toString().substr(-2)}`;
     });
     
     const forecastLabels = data.forecast.map(d => {
         const date = new Date(d.date);
-        return `W${d.week_number} ${date.getFullYear()}`;
+        return `W${d.week_number} '${date.getFullYear().toString().substr(-2)}`;
     });
     
     const allLabels = [...historicalLabels, ...forecastLabels];
@@ -247,12 +247,13 @@ function displayChart(data) {
     const historicalData = data.historical.map(d => d.actual);
     const historicalDataFull = [...historicalData, ...Array(data.forecast.length).fill(null)];
     
-    // Forecast data
-    const forecastData = [...Array(data.historical.length).fill(null), ...data.forecast.map(d => d.predicted)];
+    // Forecast data with connection point
+    const lastHistoricalValue = historicalData[historicalData.length - 1];
+    const forecastData = [...Array(data.historical.length - 1).fill(null), lastHistoricalValue, ...data.forecast.map(d => d.predicted)];
     
     // Confidence interval
-    const lowerBound = [...Array(data.historical.length).fill(null), ...data.forecast.map(d => d.lower_bound)];
-    const upperBound = [...Array(data.historical.length).fill(null), ...data.forecast.map(d => d.upper_bound)];
+    const lowerBound = [...Array(data.historical.length - 1).fill(null), lastHistoricalValue, ...data.forecast.map(d => d.lower_bound)];
+    const upperBound = [...Array(data.historical.length - 1).fill(null), lastHistoricalValue, ...data.forecast.map(d => d.upper_bound)];
     
     // Destroy existing chart
     if (predictionChart) {
@@ -270,41 +271,49 @@ function displayChart(data) {
                     data: historicalDataFull,
                     borderColor: 'rgb(59, 130, 246)',
                     backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    borderWidth: 2,
-                    pointRadius: 3,
-                    pointHoverRadius: 5,
-                    tension: 0.3
+                    borderWidth: 3,
+                    pointRadius: 2,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: 'rgb(59, 130, 246)',
+                    tension: 0.4,
+                    fill: false
                 },
                 {
                     label: 'Prediksi',
                     data: forecastData,
                     borderColor: 'rgb(34, 197, 94)',
                     backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                    borderWidth: 2,
-                    borderDash: [5, 5],
+                    borderWidth: 3,
+                    borderDash: [8, 4],
                     pointRadius: 4,
-                    pointHoverRadius: 6,
-                    tension: 0.3
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: 'rgb(34, 197, 94)',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    tension: 0.4,
+                    fill: false
                 },
                 {
                     label: 'Upper Bound',
                     data: upperBound,
-                    borderColor: 'rgba(34, 197, 94, 0.3)',
-                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                    borderColor: 'rgba(34, 197, 94, 0.2)',
+                    backgroundColor: 'rgba(34, 197, 94, 0.15)',
                     borderWidth: 1,
                     fill: '+1',
                     pointRadius: 0,
-                    tension: 0.3
+                    tension: 0.4,
+                    borderDash: [2, 2]
                 },
                 {
                     label: 'Lower Bound',
                     data: lowerBound,
-                    borderColor: 'rgba(34, 197, 94, 0.3)',
-                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                    borderColor: 'rgba(34, 197, 94, 0.2)',
+                    backgroundColor: 'rgba(34, 197, 94, 0.15)',
                     borderWidth: 1,
                     fill: false,
                     pointRadius: 0,
-                    tension: 0.3
+                    tension: 0.4,
+                    borderDash: [2, 2]
                 }
             ]
         },
@@ -321,7 +330,11 @@ function displayChart(data) {
                     position: 'top',
                     labels: {
                         usePointStyle: true,
-                        padding: 15,
+                        padding: 20,
+                        font: {
+                            size: 13,
+                            weight: '500'
+                        },
                         filter: function(item, chart) {
                             // Hide confidence interval from legend
                             return !item.text.includes('Bound');
@@ -330,16 +343,48 @@ function displayChart(data) {
                 },
                 tooltip: {
                     enabled: true,
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 12,
+                    titleFont: {
+                        size: 14,
+                        weight: 'bold'
+                    },
+                    bodyFont: {
+                        size: 13
+                    },
                     callbacks: {
+                        title: function(context) {
+                            return context[0].label;
+                        },
                         label: function(context) {
                             let label = context.dataset.label || '';
-                            if (label) {
+                            if (label && !label.includes('Bound')) {
                                 label += ': ';
+                                if (context.parsed.y !== null) {
+                                    label += context.parsed.y.toLocaleString('id-ID') + ' paket';
+                                }
+                                return label;
                             }
-                            if (context.parsed.y !== null) {
-                                label += context.parsed.y.toLocaleString('id-ID') + ' paket';
+                            return null;
+                        },
+                        afterBody: function(context) {
+                            const index = context[0].dataIndex;
+                            const datasets = context[0].chart.data.datasets;
+                            
+                            // Show confidence interval for forecast points
+                            if (index >= data.historical.length) {
+                                const upper = datasets.find(d => d.label === 'Upper Bound').data[index];
+                                const lower = datasets.find(d => d.label === 'Lower Bound').data[index];
+                                
+                                if (upper !== null && lower !== null) {
+                                    return [
+                                        '',
+                                        `Confidence Interval:`,
+                                        `${lower.toLocaleString('id-ID')} - ${upper.toLocaleString('id-ID')} paket`
+                                    ];
+                                }
                             }
-                            return label;
+                            return [];
                         }
                     }
                 }
@@ -348,22 +393,30 @@ function displayChart(data) {
                 x: {
                     grid: {
                         display: true,
-                        color: 'rgba(0, 0, 0, 0.05)'
+                        color: 'rgba(0, 0, 0, 0.05)',
+                        drawBorder: false
                     },
                     ticks: {
                         maxRotation: 45,
-                        minRotation: 45
+                        minRotation: 45,
+                        font: {
+                            size: 11
+                        }
                     }
                 },
                 y: {
                     beginAtZero: true,
                     grid: {
                         display: true,
-                        color: 'rgba(0, 0, 0, 0.05)'
+                        color: 'rgba(0, 0, 0, 0.05)',
+                        drawBorder: false
                     },
                     ticks: {
                         callback: function(value) {
                             return value.toLocaleString('id-ID');
+                        },
+                        font: {
+                            size: 11
                         }
                     }
                 }
