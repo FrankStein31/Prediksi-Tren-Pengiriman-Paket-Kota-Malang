@@ -4,15 +4,15 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PrediksiController;
 use App\Http\Controllers\ShipmentDataController;
 use App\Http\Controllers\UploadDataController;
+use App\Http\Controllers\DashboardController;
 
 Route::get('/', function () {
     return redirect()->route('dashboard');
 });
 
 // Main Pages
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->name('dashboard');
+Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+Route::get('/model-explanation', [DashboardController::class, 'modelExplanation'])->name('model.explanation');
 
 Route::get('/data-pengiriman', [ShipmentDataController::class, 'index'])->name('data.pengiriman');
 Route::get('/data-pengiriman/getData', [ShipmentDataController::class, 'getData'])->name('data.pengiriman.getData');
