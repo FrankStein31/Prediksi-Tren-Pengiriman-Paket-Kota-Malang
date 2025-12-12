@@ -60,12 +60,10 @@ def load_historical_data(kecamatan, weeks_back=52, reference_date=None, is_futur
         return None
     
     try:
-        # Use reference date or start of current week
+        # Use reference date or current date/time
         if reference_date is None:
-            # Get start of current week (Monday)
-            today = datetime.now()
-            start_of_week = today - timedelta(days=today.weekday())
-            reference_date = start_of_week
+            # Real-time: use NOW (current date/time)
+            reference_date = datetime.now()
         else:
             reference_date = pd.to_datetime(reference_date)
         
@@ -254,11 +252,9 @@ def predict():
             except:
                 return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
         else:
-            # Real-time mode: use start of current week (Monday)
-            today = datetime.now()
-            start_of_week = today - timedelta(days=today.weekday())
-            reference_date = start_of_week
-            logger.info(f'Real-time mode: Using start of week {start_of_week.strftime("%Y-%m-%d")}')
+            # Real-time mode: use current date/time (NOW)
+            reference_date = datetime.now()
+            logger.info(f'Real-time mode: Using current date {reference_date.strftime("%Y-%m-%d %H:%M:%S")}')
         
         # Load historical data
         logger.info(f'Loading data for {kecamatan} (mode: {date_mode}, is_future: {is_future_date})...')
@@ -320,6 +316,7 @@ def predict():
         
         # Prepare forecast data
         # For future dates, only show forecast after reference_date
+        # Also check if actual data exists for comparison
         forecast_data = []
         for idx, row in forecast.iterrows():
             forecast_date = row['ds']
@@ -329,14 +326,50 @@ def predict():
                 if forecast_date < reference_date:
                     continue  # Skip forecasts before reference date
             
-            forecast_data.append({
+            # Check if actual data exists for this forecast date (for comparison)
+            # Use weekly range check: forecast_date BETWEEN week_start AND week_end
+            actual_value = None
+            try:
+                conn_check = get_db_connection()
+                if conn_check:
+                    forecast_date_str = forecast_date.strftime('%Y-%m-%d')
+                    # Check if forecast_date falls within any weekly range
+                    check_query = """
+                    SELECT total_paket, week_start, week_end
+                    FROM weekly_shipment_data 
+                    WHERE kecamatan = %s 
+                    AND %s BETWEEN week_start AND week_end
+                    LIMIT 1
+                    """
+                    cursor = conn_check.cursor(dictionary=True)
+                    cursor.execute(check_query, (kecamatan, forecast_date_str))
+                    result = cursor.fetchone()
+                    cursor.close()
+                    conn_check.close()
+                    if result:
+                        actual_value = int(result['total_paket'])
+                        logger.info(f'✅ Found actual data for {forecast_date_str}: {actual_value} paket (week: {result["week_start"]} to {result["week_end"]})')
+                    else:
+                        logger.info(f'❌ No actual data found for {forecast_date_str} in any weekly range')
+            except Exception as e:
+                logger.warning(f'Could not check actual data for {forecast_date}: {str(e)}')
+            
+            forecast_item = {
                 'date': forecast_date.strftime('%Y-%m-%d'),
                 'predicted': max(0, int(round(row['yhat']))),
                 'lower_bound': max(0, int(round(row['yhat_lower']))),
                 'upper_bound': max(0, int(round(row['yhat_upper']))),
                 'week_number': forecast_date.isocalendar()[1],
                 'year': forecast_date.year
-            })
+            }
+            
+            # Add actual value if exists
+            if actual_value is not None:
+                forecast_item['actual'] = actual_value
+                forecast_item['difference'] = actual_value - forecast_item['predicted']
+                forecast_item['accuracy_percent'] = round((1 - abs(forecast_item['difference']) / actual_value) * 100, 2) if actual_value > 0 else 0
+            
+            forecast_data.append(forecast_item)
             
             # Only show the requested number of forecast weeks
             if len(forecast_data) >= weeks_forecast:

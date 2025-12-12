@@ -20,7 +20,7 @@
             <div class="hidden md:block">
                 <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-6 text-center">
                     <i class="fas fa-brain text-6xl mb-2"></i>
-                    <p class="text-sm font-semibold">Prophet AI</p>
+                    <p class="text-sm font-semibold">Prophet</p>
                 </div>
             </div>
         </div>
@@ -55,7 +55,7 @@
                                    onchange="toggleDateMode()"
                                    class="w-4 h-4 text-purple-600 focus:ring-purple-500">
                             <span class="ml-2 text-sm text-gray-700">
-                                <i class="fas fa-clock mr-1"></i>Real-time (Minggu Ini)
+                                <i class="fas fa-clock mr-1"></i>Sesuai Data (Latest Database)
                             </span>
                         </label>
                         <label class="flex items-center flex-1 cursor-pointer">
@@ -219,6 +219,49 @@
         </div>
     </div>
 
+    <!-- Forecast Table Section -->
+    <div id="forecast-table-section" class="hidden bg-white rounded-xl shadow-lg p-6">
+        <div class="mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">
+                <i class="fas fa-table mr-2 text-green-600"></i>
+                Detail Prediksi Pengiriman
+            </h2>
+            <p class="text-gray-600 text-sm">
+                Prediksi pengiriman paket untuk <span class="font-semibold" id="table-weeks-forecast">4</span> minggu ke depan
+            </p>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gradient-to-r from-green-50 to-emerald-50">
+                    <tr id="table-header">
+                        <!-- Headers will be dynamically inserted by JavaScript -->
+                    </tr>
+                </thead>
+                <tbody id="forecast-table-body" class="bg-white divide-y divide-gray-200">
+                    <!-- Data will be inserted here by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div class="flex items-start gap-3">
+                <i class="fas fa-info-circle text-blue-600 text-lg mt-1"></i>
+                <div class="text-sm text-blue-800">
+                    <p class="font-semibold mb-1">Catatan:</p>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li><strong>Prediksi:</strong> Nilai prediksi yang paling mungkin terjadi</li>
+                        <li><strong>Aktual:</strong> Nilai sesungguhnya dari database (jika tersedia)</li>
+                        <li><strong>Selisih:</strong> Perbedaan antara nilai aktual dan prediksi</li>
+                        <li><strong>Akurasi:</strong> Persentase ketepatan prediksi (hijau ≥90%, kuning ≥80%, merah <80%)</li>
+                        <li><strong>Terendah:</strong> Batas bawah confidence interval (80%)</li>
+                        <li><strong>Tertinggi:</strong> Batas atas confidence interval (80%)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Error Section -->
     <div id="error-section" class="hidden bg-red-50 border border-red-200 rounded-xl p-6">
         <div class="flex items-start">
@@ -306,6 +349,7 @@ async function loadPrediction() {
     // Hide previous results
     document.getElementById('statistics-section').classList.add('hidden');
     document.getElementById('chart-section').classList.add('hidden');
+    document.getElementById('forecast-table-section').classList.add('hidden');
     document.getElementById('error-section').classList.add('hidden');
     
     // Show loading
@@ -345,6 +389,7 @@ async function loadPrediction() {
         // Display data
         displayStatistics(data.statistics);
         displayChart(data);
+        displayForecastTable(data.forecast, data.statistics.weeks_forecast);
         
     } catch (error) {
         document.getElementById('loading-indicator').classList.add('hidden');
@@ -565,6 +610,142 @@ function displayChart(data) {
         `${data.statistics.date_range_start} s/d ${data.statistics.forecast_end}`;
     
     document.getElementById('chart-section').classList.remove('hidden');
+}
+
+function displayForecastTable(forecastData, weeksCount) {
+    const tableHeader = document.getElementById('table-header');
+    const tableBody = document.getElementById('forecast-table-body');
+    tableBody.innerHTML = ''; // Clear existing data
+    
+    // Update weeks info
+    document.getElementById('table-weeks-forecast').textContent = weeksCount;
+    
+    // Check if any forecast has actual data
+    const hasActualData = forecastData.some(item => item.actual !== undefined);
+    
+    // Build table header dynamically
+    let headerHTML = `
+        <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+            <i class="fas fa-calendar-day mr-2"></i>Tanggal
+        </th>
+        <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+            <i class="fas fa-calendar-week mr-2"></i>Minggu
+        </th>
+        <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+            <i class="fas fa-chart-line mr-2"></i>Prediksi
+        </th>
+    `;
+    
+    if (hasActualData) {
+        headerHTML += `
+            <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+                <i class="fas fa-database mr-2"></i>Aktual
+            </th>
+            <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+                <i class="fas fa-exchange-alt mr-2"></i>Selisih
+            </th>
+            <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+                <i class="fas fa-percent mr-2"></i>Akurasi
+            </th>
+        `;
+    }
+    
+    headerHTML += `
+        <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+            <i class="fas fa-arrow-down mr-2"></i>Terendah
+        </th>
+        <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+            <i class="fas fa-arrow-up mr-2"></i>Tertinggi
+        </th>
+    `;
+    
+    tableHeader.innerHTML = headerHTML;
+    
+    // Build table rows
+    forecastData.forEach((item, index) => {
+        const date = new Date(item.date);
+        const formattedDate = date.toLocaleDateString('id-ID', { 
+            weekday: 'short', 
+            day: 'numeric', 
+            month: 'short', 
+            year: 'numeric' 
+        });
+        
+        const weekInfo = `Minggu ${item.week_number}, ${item.year}`;
+        
+        // Create row with alternating colors
+        const rowClass = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+        
+        let rowHTML = `
+            <tr class="${rowClass} hover:bg-blue-50 transition-colors">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                    <i class="far fa-calendar text-purple-500 mr-2"></i>
+                    ${formattedDate}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    <span class="px-2 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs font-medium">
+                        ${weekInfo}
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-green-700">
+                    <i class="fas fa-chart-line mr-1"></i>
+                    ${item.predicted.toLocaleString('id-ID')}
+                </td>
+        `;
+        
+        // Add actual data columns if available
+        if (hasActualData) {
+            if (item.actual !== undefined) {
+                const difference = item.difference || 0;
+                const accuracy = item.accuracy_percent || 0;
+                const diffClass = difference >= 0 ? 'text-green-600' : 'text-red-600';
+                const diffIcon = difference >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+                
+                rowHTML += `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-blue-700">
+                        <i class="fas fa-box mr-1"></i>
+                        ${item.actual.toLocaleString('id-ID')}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold ${diffClass}">
+                        <i class="fas ${diffIcon} mr-1"></i>
+                        ${Math.abs(difference).toLocaleString('id-ID')}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
+                        <span class="px-2 py-1 ${accuracy >= 90 ? 'bg-green-100 text-green-800' : accuracy >= 80 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'} rounded-full text-xs font-bold">
+                            ${accuracy.toFixed(1)}%
+                        </span>
+                    </td>
+                `;
+            } else {
+                rowHTML += `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-400 italic">
+                        -
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-400 italic">
+                        -
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-400 italic">
+                        -
+                    </td>
+                `;
+            }
+        }
+        
+        rowHTML += `
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-blue-600">
+                    ${item.lower_bound.toLocaleString('id-ID')}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-red-600">
+                    ${item.upper_bound.toLocaleString('id-ID')}
+                </td>
+            </tr>
+        `;
+        
+        tableBody.innerHTML += rowHTML;
+    });
+    
+    // Show table
+    document.getElementById('forecast-table-section').classList.remove('hidden');
 }
 
 function showError(message) {
