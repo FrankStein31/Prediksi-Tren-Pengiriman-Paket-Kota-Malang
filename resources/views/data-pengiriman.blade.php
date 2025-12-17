@@ -115,7 +115,7 @@
                 </h1>
                 <p class="text-blue-100 text-sm">Semua data mentah pengiriman paket Kota Malang</p>
             </div>
-            <div class="hidden md:block">
+            <!-- <div class="hidden md:block">
                 <div class="bg-white/20 backdrop-blur-sm rounded-xl p-4 text-center min-w-[140px]">
                     <div class="flex items-center justify-center gap-2 mb-1">
                         <i class="fas fa-database text-2xl"></i>
@@ -125,7 +125,7 @@
                         <i class="fas fa-spinner fa-spin text-white"></i>
                     </h3>
                 </div>
-            </div>
+            </div> -->
         </div>
     </div>
 
@@ -135,8 +135,11 @@
             <h2 class="text-2xl font-bold text-gray-800">
                 <i class="fas fa-list mr-2 text-purple-600"></i>Tabel Data Lengkap
             </h2>
-            <div class="flex gap-2">
-                <button onclick="refreshTable()" class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 transition">
+            <div class="flex gap-3">
+                <button onclick="window.location.href='{{ route('upload') }}'" class="bg-gradient-to-r from-green-500 to-green-600 text-white px-5 py-2.5 rounded-lg hover:from-green-600 hover:to-green-700 transition shadow-md font-medium">
+                    <i class="fas fa-upload mr-2"></i>Upload Data
+                </button>
+                <button onclick="refreshTable()" class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-5 py-2.5 rounded-lg hover:from-blue-600 hover:to-blue-700 transition shadow-md font-medium">
                     <i class="fas fa-sync-alt mr-2"></i>Refresh
                 </button>
             </div>

@@ -29,7 +29,7 @@
     <!-- Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <!-- Card 1 -->
-        <div class="bg-white rounded-xl shadow-lg p-6 hover:shadow-2xl hover:-translate-y-1 transform transition">
+        <!-- <div class="bg-white rounded-xl shadow-lg p-6 hover:shadow-2xl hover:-translate-y-1 transform transition">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-gray-500 text-sm font-medium mb-1">Total Data</p>
@@ -40,7 +40,7 @@
                     <i class="fas fa-database text-blue-600 text-2xl"></i>
                 </div>
             </div>
-        </div>
+        </div> -->
 
         <!-- Card 2 -->
         <div class="bg-white rounded-xl shadow-lg p-6 hover:shadow-2xl hover:-translate-y-1 transform transition">
@@ -139,28 +139,28 @@
                             <span class="font-medium text-gray-700">{{ ucwords(strtolower($kec->kecamatan)) }}</span>
                             <p class="text-xs text-gray-500">{{ number_format($kec->total) }} paket</p>
                         </div>
-                        <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">Aktif</span>
+                        <!-- <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">Aktif</span> -->
                     </div>
                     @empty
                     <div class="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                         <span class="font-medium text-gray-700">Blimbing</span>
-                        <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">Aktif</span>
+                        <!-- <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">Aktif</span> -->
                     </div>
                     <div class="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                         <span class="font-medium text-gray-700">Kedungkandang</span>
-                        <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">Aktif</span>
+                        <!-- <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">Aktif</span> -->
                     </div>
                     <div class="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                         <span class="font-medium text-gray-700">Klojen</span>
-                        <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">Aktif</span>
+                        <!-- <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">Aktif</span> -->
                     </div>
                     <div class="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                         <span class="font-medium text-gray-700">Lowokwaru</span>
-                        <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">Aktif</span>
+                        <!-- <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">Aktif</span> -->
                     </div>
                     <div class="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                         <span class="font-medium text-gray-700">Sukun</span>
-                        <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">Aktif</span>
+                        <!-- <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">Aktif</span> -->
                     </div>
                     @endforelse
                 </div>

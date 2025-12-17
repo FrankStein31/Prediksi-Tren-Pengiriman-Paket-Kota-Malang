@@ -65,8 +65,10 @@
             <div class="flex items-center justify-between h-20">
                 <!-- Logo & Brand -->
                 <div class="flex items-center space-x-3">
-                    <div class="bg-gradient-to-r from-blue-600 to-purple-600 p-3 rounded-lg">
-                        <i class="fas fa-box text-white text-2xl"></i>
+                    <div class="p-2 rounded-lg">
+                        <img src="https://images.seeklogo.com/logo-png/11/1/pt-pos-indonesia-logo-png_seeklogo-113502.png" 
+                             alt="Logo Pos Indonesia" 
+                             class="h-12 w-auto">
                     </div>
                     <div>
                         <h1 class="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
@@ -96,11 +98,11 @@
                         <span>Visualisasi</span>
                     </a>
                     
-                    <a href="{{ route('upload') }}" 
+                    <!-- <a href="{{ route('upload') }}" 
                        class="nav-link px-4 py-2 rounded-lg text-gray-700 font-medium flex items-center space-x-2 {{ request()->routeIs('upload') ? 'nav-link-active' : '' }}">
                         <i class="fas fa-upload"></i>
                         <span>Upload Data</span>
-                    </a>
+                    </a> -->
                 </div>
                 
                 <!-- Mobile Menu Button -->
