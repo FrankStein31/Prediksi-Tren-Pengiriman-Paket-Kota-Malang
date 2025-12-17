@@ -255,8 +255,8 @@
                         <li><strong>Aktual:</strong> Nilai sesungguhnya dari database (jika tersedia)</li>
                         <li><strong>Selisih:</strong> Perbedaan antara nilai aktual dan prediksi</li>
                         <li><strong>Akurasi:</strong> Persentase ketepatan prediksi (hijau ≥90%, kuning ≥80%, merah <80%)</li>
-                        <li><strong>Terendah:</strong> Batas bawah confidence interval (80%)</li>
-                        <li><strong>Tertinggi:</strong> Batas atas confidence interval (80%)</li>
+                        <!-- <li><strong>Terendah:</strong> Batas bawah confidence interval (80%)</li>
+                        <li><strong>Tertinggi:</strong> Batas atas confidence interval (80%)</li> -->
                     </ul>
                 </div>
             </div>
@@ -659,14 +659,15 @@ function displayForecastTable(forecastData, weeksCount) {
         `;
     }
     
-    headerHTML += `
-        <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
-            <i class="fas fa-arrow-down mr-2"></i>Terendah
-        </th>
-        <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
-            <i class="fas fa-arrow-up mr-2"></i>Tertinggi
-        </th>
-    `;
+    // Lower and Upper Bound columns disabled
+    // headerHTML += `
+    //     <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+    //         <i class="fas fa-arrow-down mr-2"></i>Terendah
+    //     </th>
+    //     <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+    //         <i class="fas fa-arrow-up mr-2"></i>Tertinggi
+    //     </th>
+    // `;
     
     tableHeader.innerHTML = headerHTML;
     
@@ -747,13 +748,17 @@ function displayForecastTable(forecastData, weeksCount) {
             }
         }
         
+        // Lower and Upper Bound columns disabled
+        // rowHTML += `
+        //         <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-blue-600">
+        //             ${item.lower_bound.toLocaleString('id-ID')}
+        //         </td>
+        //         <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-red-600">
+        //             ${item.upper_bound.toLocaleString('id-ID')}
+        //         </td>
+        // `;
+        
         rowHTML += `
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-blue-600">
-                    ${item.lower_bound.toLocaleString('id-ID')}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-red-600">
-                    ${item.upper_bound.toLocaleString('id-ID')}
-                </td>
             </tr>
         `;
         
