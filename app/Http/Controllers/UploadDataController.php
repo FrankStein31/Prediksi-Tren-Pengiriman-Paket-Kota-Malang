@@ -446,33 +446,46 @@ class UploadDataController extends Controller
     }
     
     /**
-     * Get preview data for Yajra DataTables (server-side, max 50 rows)
+     * Get preview data (max 10 rows, no pagination)
+     * Sorted: Data Baru (New) first, then by date (newest first)
      */
     public function getPreviewData(Request $request)
     {
         $data = session('upload_preview', []);
         
-        // Sort: Status Baru duluan (false = Baru, true = Duplikat), lalu Tanggal Kirim descending
-        usort($data, function($a, $b) {
-            $isDuplicateA = isset($a['is_duplicate']) ? $a['is_duplicate'] : false;
-            $isDuplicateB = isset($b['is_duplicate']) ? $b['is_duplicate'] : false;
-            
-            // Sort by status first (Baru = false comes first)
-            if ($isDuplicateA !== $isDuplicateB) {
-                return $isDuplicateA ? 1 : -1; // false (Baru) comes first
+        // Separate new and duplicate data
+        $newData = [];
+        $duplicateData = [];
+        
+        foreach ($data as $row) {
+            $isDuplicate = isset($row['is_duplicate']) ? $row['is_duplicate'] : false;
+            if ($isDuplicate) {
+                $duplicateData[] = $row;
+            } else {
+                $newData[] = $row;
             }
-            
-            // If same status, sort by tgl_kirim descending (newest first)
+        }
+        
+        // Sort each group by tgl_kirim descending (newest first)
+        usort($newData, function($a, $b) {
             $dateA = isset($a['tgl_kirim']) ? strtotime($a['tgl_kirim']) : 0;
             $dateB = isset($b['tgl_kirim']) ? strtotime($b['tgl_kirim']) : 0;
-            
-            return $dateB - $dateA; // Descending (newest first)
+            return $dateB - $dateA; // Descending
         });
         
-        // Limit to 50 rows for preview to keep it light
-        $previewData = array_slice($data, 0, 50);
+        usort($duplicateData, function($a, $b) {
+            $dateA = isset($a['tgl_kirim']) ? strtotime($a['tgl_kirim']) : 0;
+            $dateB = isset($b['tgl_kirim']) ? strtotime($b['tgl_kirim']) : 0;
+            return $dateB - $dateA; // Descending
+        });
         
-        \Log::info('Preview request - Total rows: ' . count($data) . ' | Showing: ' . count($previewData) . ' (Sorted: Baru first, then by tgl_kirim desc)');
+        // Merge: New data first, then duplicate data
+        $sortedData = array_merge($newData, $duplicateData);
+        
+        // Limit to 10 rows for preview to keep it light
+        $previewData = array_slice($sortedData, 0, 10);
+        
+        \Log::info('Preview request - Total: ' . count($data) . ' | New: ' . count($newData) . ' | Duplicate: ' . count($duplicateData) . ' | Showing: ' . count($previewData) . ' (Sorted: Baru first, then by tgl_kirim desc)');
         
         return datatables()
             ->of(collect($previewData))
@@ -487,6 +500,7 @@ class UploadDataController extends Controller
                 return isset($row['is_duplicate']) ? $row['is_duplicate'] : false;
             })
             ->rawColumns(['status_badge'])
+            ->skipPaging() // No pagination
             ->make(true);
     }
     

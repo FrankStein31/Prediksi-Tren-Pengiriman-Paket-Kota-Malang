@@ -241,33 +241,14 @@
             </div>
             <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700 mb-4">
                 <i class="fas fa-info-circle mr-2"></i>
-                <strong>Catatan:</strong> Preview menampilkan maksimal 50 baris pertama agar tidak berat. Semua data akan diimport saat klik tombol Import.
+                <strong>Catatan:</strong> Preview menampilkan maksimal 10 baris pertama agar tidak berat. Semua data akan diimport saat klik tombol Import.
             </div>
         </div>
 
         <!-- Preview Table with Yajra DataTables -->
         <div class="overflow-x-auto">
             <table id="preview-table" class="display nowrap" style="width:100%">
-                <thead>
-                    <tr>
-                        <th style="width: 80px;">Status</th>
-                        <th style="width: 140px;">NOSI</th>
-                        <th style="width: 100px;">Status Kirim</th>
-                        <th style="width: 80px;">Produk</th>
-                        <th style="width: 60px;">SLA</th>
-                        <th style="width: 100px;">Kantor Kirim</th>
-                        <th style="width: 90px;">Tgl Kirim</th>
-                        <th style="width: 90px;">Tgl Antaran</th>
-                        <th style="width: 90px;">Tgl Update</th>
-                        <th style="width: 120px;">Petugas</th>
-                        <th style="width: 150px;">Penerima</th>
-                        <th style="width: 200px;">Alamat</th>
-                        <th style="width: 120px;">Kota</th>
-                        <th style="width: 70px;">Berat</th>
-                        <th style="width: 120px;">Posisi</th>
-                        <th style="width: 100px;">Status SWP</th>
-                    </tr>
-                </thead>
+                <!-- Table structure will be built dynamically by JavaScript -->
             </table>
         </div>
     </div>
@@ -504,9 +485,35 @@ function displayPreview(result) {
     // Destroy existing DataTable if exists
     if (previewTable) {
         previewTable.destroy();
+        $('#preview-table').empty(); // Clear table completely
     }
     
-    // Initialize Yajra DataTables (Server-Side) - Same style as Data Pengiriman
+    // Rebuild table structure with headers
+    $('#preview-table').html(`
+        <thead>
+            <tr>
+                <th>Status</th>
+                <th>NOSI</th>
+                <th>Status Kirim</th>
+                <th>Produk</th>
+                <th>SLA</th>
+                <th>Kantor Kirim</th>
+                <th>Tgl Kirim</th>
+                <th>Tgl Antaran</th>
+                <th>Tgl Update</th>
+                <th>Petugas</th>
+                <th>Penerima</th>
+                <th>Alamat</th>
+                <th>Kota</th>
+                <th>Berat</th>
+                <th>Posisi</th>
+                <th>Status SWP</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    `);
+    
+    // Initialize DataTables - Simple preview (10 rows only, no pagination)
     previewTable = $('#preview-table').DataTable({
         processing: true,
         serverSide: true,
@@ -515,7 +522,7 @@ function displayPreview(result) {
             { 
                 data: 'status_badge',
                 name: 'status_badge',
-                orderable: false, // Already sorted by backend
+                orderable: false,
                 searchable: false,
                 width: '80px'
             },
@@ -536,34 +543,22 @@ function displayPreview(result) {
             { data: 'status_swp', name: 'status_swp', width: '100px' }
         ],
         
-        // Performance settings - Same as Data Pengiriman
-        deferRender: true,
-        scroller: false,
+        // No pagination - show all 10 rows
+        paging: false,
         
-        // Display options
-        pageLength: 5,
-        lengthMenu: [[5, 10, 15, 25, 50], [5, 10, 15, 25, 50]],
+        // No search - simple preview only
+        searching: false,
         
-        // DOM layout
-        dom: '<"row"<"col-sm-6"l><"col-sm-6"f>>' +
-             '<"row"<"col-sm-12"tr>>' +
-             '<"row"<"col-sm-5"i><"col-sm-7"p>>',
+        // No info text
+        info: false,
+        
+        // Simple DOM layout (table only)
+        dom: 't',
         
         // Language
         language: {
             processing: '<div style="padding:20px;"><i class="fas fa-spinner fa-spin fa-2x text-blue-600"></i><br><br>Loading preview...</div>',
-            search: "Cari:",
-            lengthMenu: "Tampilkan _MENU_ baris",
-            info: "Menampilkan _START_ - _END_ dari _TOTAL_ data",
-            infoEmpty: "Tidak ada data",
-            infoFiltered: "(filter dari _MAX_ total data)",
-            paginate: {
-                first: "Pertama",
-                last: "Terakhir",
-                next: "Berikutnya",
-                previous: "Sebelumnya"
-            },
-            zeroRecords: "Tidak ada data yang ditemukan",
+            zeroRecords: "Tidak ada data untuk preview",
             emptyTable: "Tidak ada data tersedia"
         },
         
