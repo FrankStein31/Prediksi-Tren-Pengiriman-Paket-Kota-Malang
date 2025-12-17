@@ -149,14 +149,14 @@
                     <i class="fas fa-copyright"></i> 2025 Prediksi Pengiriman Paket - Kota Malang
                 </div>
                 <div class="flex space-x-4">
-                    <a href="https://github.com/FrankStein31/" class="text-gray-600 hover:text-blue-600">
-                        <i class="fab fa-github text-xl"></i>
+                    <a href="https://www.instagram.com/posind_malang/" target="_blank" class="text-gray-600 hover:text-pink-600" title="Instagram PT Pos Malang">
+                        <i class="fab fa-instagram text-2xl"></i>
                     </a>
-                    <a href="https://www.linkedin.com/in/frankie-steinlie/" class="text-gray-600 hover:text-blue-600">
-                        <i class="fab fa-linkedin text-xl"></i>
+                    <a href="https://x.com/ktrposmalang" target="_blank" class="text-gray-600 hover:text-blue-600" title="X (Twitter) Kantor Pos Malang">
+                        <i class="fab fa-twitter text-2xl"></i>
                     </a>
-                    <a href="https://www.instagram.com/steinliejoki" class="text-gray-600 hover:text-blue-600">
-                        <i class="fab fa-instagram text-xl"></i>
+                    <a href="https://www.posindonesia.co.id/en" target="_blank" class="text-gray-600 hover:text-blue-600" title="Website PT Pos Indonesia">
+                        <i class="fas fa-globe text-2xl"></i>
                     </a>
                 </div>
             </div>
