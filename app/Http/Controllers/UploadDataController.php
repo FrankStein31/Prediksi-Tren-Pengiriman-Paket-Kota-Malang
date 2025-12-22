@@ -379,17 +379,34 @@ class UploadDataController extends Controller
         $sessionId = session()->getId();
         $progressFile = storage_path("app/upload_progress_{$sessionId}.json");
         
-        // OPTIMIZATION: Get ALL existing NOSI from database in one query
+        // OPTIMIZATION: Get ALL existing NOSI from database (chunked to avoid placeholder limit)
         $allNosi = array_filter(array_column($data, 'nosi')); // Extract all NOSI from uploaded data
         $existingNosi = [];
         
         if (!empty($allNosi)) {
             \Log::info('Fetching existing NOSI from database...');
-            $existingNosi = ShipmentData::whereIn('nosi', $allNosi)
-                ->pluck('nosi')
-                ->flip() // Convert to associative array for faster lookup
-                ->toArray();
-            \Log::info('Found ' . count($existingNosi) . ' existing NOSI in database');
+            
+            // MySQL has limit of ~65k placeholders, so chunk the whereIn query
+            $chunkSize = 50000; // Safe limit for MySQL
+            $nosiChunks = array_chunk($allNosi, $chunkSize);
+            
+            \Log::info('Total NOSI to check: ' . count($allNosi) . ' in ' . count($nosiChunks) . ' chunks');
+            
+            foreach ($nosiChunks as $chunkIndex => $nosiChunk) {
+                \Log::info('Fetching chunk ' . ($chunkIndex + 1) . '/' . count($nosiChunks) . ' (' . count($nosiChunk) . ' items)');
+                
+                $chunkResult = ShipmentData::whereIn('nosi', $nosiChunk)
+                    ->pluck('nosi')
+                    ->flip() // Convert to associative array for faster lookup
+                    ->toArray();
+                
+                // Merge with existing results
+                $existingNosi = array_merge($existingNosi, $chunkResult);
+                
+                \Log::info('Found ' . count($chunkResult) . ' existing NOSI in this chunk');
+            }
+            
+            \Log::info('Total existing NOSI found: ' . count($existingNosi) . ' out of ' . count($allNosi));
         }
         
         // Initialize log array in progress file
