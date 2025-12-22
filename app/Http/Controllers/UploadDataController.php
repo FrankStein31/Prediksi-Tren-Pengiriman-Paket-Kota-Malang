@@ -363,18 +363,25 @@ class UploadDataController extends Controller
     }
     
     /**
-     * Check for duplicates by checking NOSI only (OPTIMIZED)
+     * Check for duplicates by checking NOSI only (OPTIMIZED - DISK BASED)
      */
     private function checkDuplicates($data)
     {
-        $newData = [];
+        // Use temporary file for large data instead of memory
+        $sessionId = session()->getId();
+        $tempFile = storage_path("app/upload_temp_{$sessionId}.json");
+        
         $duplicateData = [];
         $previewNew = []; // Separate preview array
         $duplicateCount = 0;
+        $newCount = 0;
         
-        \Log::info('=== STARTING DUPLICATE CHECK ===');
+        // Initialize temp file
+        file_put_contents($tempFile, ''); // Empty file
+        
+        \Log::info('=== STARTING DUPLICATE CHECK (DISK-BASED) ===');
         \Log::info('Total rows to check: ' . count($data));
-        \Log::info('Checking duplicates based on NOSI only');
+        \Log::info('Using temp file: ' . $tempFile);
         
         // Get session ID for progress tracking
         $sessionId = session()->getId();
@@ -415,7 +422,7 @@ class UploadDataController extends Controller
         $totalRows = count($data);
         $updateInterval = max(1, (int)($totalRows / 100)); // Update progress every 1%
         
-        // MEMORY OPTIMIZATION: Process in single pass, store only what's needed
+        // MEMORY OPTIMIZATION: Process in single pass, WRITE NEW DATA TO DISK
         foreach ($data as $index => $row) {
             // Check if NOSI exists in database (using in-memory lookup)
             $nosi = $row['nosi'] ?? null;
@@ -435,10 +442,12 @@ class UploadDataController extends Controller
                     $duplicateData[] = $row;
                 }
             } else {
-                // Store ALL new data for import (this is what we need)
+                $newCount++;
+                
+                // ✅ WRITE TO DISK instead of storing in memory
                 $row['is_duplicate'] = false;
                 $row['status'] = 'Baru';
-                $newData[] = $row;
+                file_put_contents($tempFile, json_encode($row) . "\n", FILE_APPEND);
                 
                 // Also store first 50 for preview
                 if (count($previewNew) < 50) {
@@ -474,7 +483,7 @@ class UploadDataController extends Controller
                     'log' => "Checking: " . ($index + 1) . "/{$totalRows}",
                     'logs' => $logMessages,
                     'duplicate_count' => $duplicateCount,
-                    'new_count' => count($newData),
+                    'new_count' => $newCount,
                     'percentage' => round((($index + 1) / $totalRows) * 100, 1)
                 ];
                 
@@ -493,32 +502,33 @@ class UploadDataController extends Controller
         }
         
         \Log::info('=== DUPLICATE CHECK COMPLETE ===');
-        \Log::info('Total: ' . ($duplicateCount + count($newData)) . ' | New: ' . count($newData) . ' | Duplicate: ' . $duplicateCount);
+        \Log::info('Total: ' . ($duplicateCount + $newCount) . ' | New: ' . $newCount . ' | Duplicate: ' . $duplicateCount);
         
         // Merge preview data (max 100 rows total)
         $previewData = array_merge($previewNew, $duplicateData);
         
         session([
             'upload_preview' => $previewData, // Max 100 rows for preview
-            'upload_new_data' => $newData, // Only new data for import
+            'upload_temp_file' => $tempFile, // ✅ Path to temp file with all new data
             'upload_stats' => [
-                'total_rows' => $duplicateCount + count($newData),
-                'new_rows' => count($newData),
+                'total_rows' => $duplicateCount + $newCount,
+                'new_rows' => $newCount,
                 'duplicate_rows' => $duplicateCount,
             ]
         ]);
         
-        \Log::info('Session stored - Preview: ' . count($previewData) . ' rows, New data: ' . count($newData) . ' rows');
+        \Log::info('Session stored - Preview: ' . count($previewData) . ' rows, New data in temp file: ' . $newCount . ' rows');
+        \Log::info('Temp file: ' . $tempFile . ' (Size: ' . (file_exists($tempFile) ? filesize($tempFile) : 0) . ' bytes)');
         
         // Force final garbage collection
         unset($existingNosi, $allNosi, $logMessages, $data, $duplicateData, $previewNew, $previewData);
         gc_collect_cycles();
         
         return [
-            'total_rows' => $duplicateCount + count($newData),
-            'new_rows' => count($newData),
+            'total_rows' => $duplicateCount + $newCount,
+            'new_rows' => $newCount,
             'duplicate_rows' => $duplicateCount,
-            'data' => $newData, // Return new data for import
+            'temp_file' => $tempFile, // Return temp file path
         ];
     }
     
@@ -558,11 +568,11 @@ class UploadDataController extends Controller
      */
     public function import(Request $request)
     {
-        // Get data from session instead of request (to avoid payload size limits)
-        $data = session('upload_new_data', []);
+        // ✅ Get temp file path and stats from session
+        $tempFile = session('upload_temp_file');
         $stats = session('upload_stats', []);
         
-        if (empty($data)) {
+        if (empty($tempFile) || !file_exists($tempFile)) {
             return response()->json(['error' => 'Tidak ada data untuk diimport'], 400);
         }
         
@@ -577,10 +587,11 @@ class UploadDataController extends Controller
         try {
             $imported = 0;
             $skipped = 0;
-            $totalRows = count($data);
+            $totalRows = $stats['new_rows'] ?? 0;
             
             \Log::info('=== STARTING IMPORT ===');
             \Log::info('Total rows to import: ' . $totalRows);
+            \Log::info('Reading from temp file: ' . $tempFile);
             
             file_put_contents($progressFile, json_encode([
                 'status' => 'importing',
@@ -592,92 +603,98 @@ class UploadDataController extends Controller
             // Get file info from session
             $fileInfo = session('upload_file_info', []);
             
-            // OPTIMIZATION: Use batch insert for better performance
-            // NO need to check duplicates again - data is already filtered
-            $chunks = array_chunk($data, 1000); // Larger chunks since no duplicate check
+            // ✅ READ FROM TEMP FILE IN CHUNKS (to avoid memory issues)
+            $handle = fopen($tempFile, 'r');
+            if (!$handle) {
+                throw new \Exception('Cannot open temp file for reading');
+            }
+            
             $processedRows = 0;
             $logMessages = [];
             $updateInterval = max(1, (int)($totalRows / 100)); // Update every 1%
+            $batchInsert = [];
+            $batchSize = 1000;
             
-            foreach ($chunks as $chunkIndex => $chunk) {
-                // Prepare batch data
-                $batchInsert = [];
+            while (($line = fgets($handle)) !== false) {
+                $row = json_decode($line, true);
+                if (!$row) continue; // Skip invalid lines
                 
-                foreach ($chunk as $row) {
-                    $processedRows++;
-                    
-                    // Remove flags if exists
-                    unset($row['is_duplicate']);
-                    unset($row['status']);
-                    
-                    // Add timestamps for batch insert
-                    $row['created_at'] = now();
-                    $row['updated_at'] = now();
-                    $batchInsert[] = $row;
-                    
-                    // Log only every N rows
-                    $shouldLog = ($processedRows % $updateInterval === 0) || ($processedRows === $totalRows);
-                    
-                    if ($shouldLog) {
-                        $detailedLog = "Processing: {$processedRows}/{$totalRows} | Batch size: " . count($batchInsert);
-                        \Log::info($detailedLog);
-                        
-                        // Add to log array
-                        $logMessages[] = [
-                            'message' => $detailedLog,
-                            'type' => 'info',
-                            'timestamp' => date('H:i:s')
-                        ];
-                        
-                        // Keep only last 50 logs
-                        if (count($logMessages) > 50) {
-                            array_shift($logMessages);
-                        }
-                        
-                        // Summary log message
-                        $summaryLog = "Import progress: {$processedRows}/{$totalRows} | Inserted: {$imported}";
-                        
-                        // Update progress file with logs array
-                        file_put_contents($progressFile, json_encode([
-                            'status' => 'importing',
-                            'current' => $processedRows,
-                            'total' => $totalRows,
-                            'log' => $summaryLog,
-                            'logs' => $logMessages,
-                            'imported' => $imported,
-                            'skipped' => $skipped,
-                            'percentage' => round(($processedRows / $totalRows) * 100, 1)
-                        ]));
-                    }
-                }
+                $processedRows++;
                 
-                // Batch insert all rows in this chunk
-                if (!empty($batchInsert)) {
+                // Remove flags if exists
+                unset($row['is_duplicate']);
+                unset($row['status']);
+                
+                // Add timestamps for batch insert
+                $row['created_at'] = now();
+                $row['updated_at'] = now();
+                $batchInsert[] = $row;
+                
+                // Insert when batch is full
+                if (count($batchInsert) >= $batchSize) {
                     try {
                         DB::table('shipment_data')->insert($batchInsert);
                         $imported += count($batchInsert);
                         \Log::info("Batch inserted: " . count($batchInsert) . " rows");
                     } catch (\Exception $e) {
                         \Log::error("Batch insert failed: " . $e->getMessage());
-                        // Fallback to individual inserts
-                        foreach ($batchInsert as $rowData) {
-                            try {
-                                unset($rowData['created_at']);
-                                unset($rowData['updated_at']);
-                                ShipmentData::create($rowData);
-                                $imported++;
-                            } catch (\Exception $e2) {
-                                \Log::error("Individual insert failed for NOSI: " . ($rowData['nosi'] ?? 'unknown'));
-                                $skipped++;
-                            }
-                        }
+                        $skipped += count($batchInsert);
                     }
+                    
+                    // Clear batch
+                    $batchInsert = [];
+                    gc_collect_cycles();
                 }
                 
-                // Memory cleanup after each chunk
-                unset($batchInsert);
-                gc_collect_cycles();
+                // Log progress
+                $shouldLog = ($processedRows % $updateInterval === 0) || ($processedRows === $totalRows);
+                
+                if ($shouldLog) {
+                    $detailedLog = "Processing: {$processedRows}/{$totalRows}";
+                    \Log::info($detailedLog);
+                    
+                    // Add to log array
+                    $logMessages[] = [
+                        'message' => $detailedLog,
+                        'type' => 'info',
+                        'timestamp' => date('H:i:s')
+                    ];
+                    
+                    // Keep only last 50 logs
+                    if (count($logMessages) > 50) {
+                        array_shift($logMessages);
+                    }
+                    
+                    // Summary log message
+                    $summaryLog = "Import progress: {$processedRows}/{$totalRows} | Inserted: {$imported}";
+                    
+                    // Update progress file with logs array
+                    file_put_contents($progressFile, json_encode([
+                        'status' => 'importing',
+                        'current' => $processedRows,
+                        'total' => $totalRows,
+                        'log' => $summaryLog,
+                        'logs' => $logMessages,
+                        'imported' => $imported,
+                        'skipped' => $skipped,
+                        'percentage' => round(($processedRows / $totalRows) * 100, 1)
+                    ]));
+                }
             }
+            
+            // Insert remaining rows in batch
+            if (!empty($batchInsert)) {
+                try {
+                    DB::table('shipment_data')->insert($batchInsert);
+                    $imported += count($batchInsert);
+                    \Log::info("Final batch inserted: " . count($batchInsert) . " rows");
+                } catch (\Exception $e) {
+                    \Log::error("Final batch insert failed: " . $e->getMessage());
+                    $skipped += count($batchInsert);
+                }
+            }
+            
+            fclose($handle);
             
             \Log::info('=== IMPORT COMPLETE ===');
             \Log::info("Total: {$totalRows} | Imported: {$imported} | Skipped: {$skipped}");
@@ -694,9 +711,15 @@ class UploadDataController extends Controller
                 'notes' => "Import berhasil: {$imported} data baru ditambahkan, {$skipped} data duplikat diskip.",
             ]);
             
+            // ✅ Delete temp file after successful import
+            if (file_exists($tempFile)) {
+                unlink($tempFile);
+                \Log::info('Temp file deleted: ' . $tempFile);
+            }
+            
             // Clear session
             session()->forget('upload_preview');
-            session()->forget('upload_new_data');
+            session()->forget('upload_temp_file');
             session()->forget('upload_stats');
             session()->forget('upload_file_info');
             
@@ -714,6 +737,11 @@ class UploadDataController extends Controller
         } catch (\Exception $e) {
             \Log::error('Import failed: ' . $e->getMessage());
             \Log::error('Stack trace: ' . $e->getTraceAsString());
+            
+            // ✅ Cleanup temp file on error too
+            if (isset($tempFile) && file_exists($tempFile)) {
+                unlink($tempFile);
+            }
             
             // Cleanup progress file on error
             if (file_exists($progressFile)) {
