@@ -369,6 +369,7 @@ class UploadDataController extends Controller
     {
         $newData = [];
         $duplicateData = [];
+        $previewNew = []; // Separate preview array
         $duplicateCount = 0;
         
         \Log::info('=== STARTING DUPLICATE CHECK ===');
@@ -414,6 +415,7 @@ class UploadDataController extends Controller
         $totalRows = count($data);
         $updateInterval = max(1, (int)($totalRows / 100)); // Update progress every 1%
         
+        // MEMORY OPTIMIZATION: Process in single pass, store only what's needed
         foreach ($data as $index => $row) {
             // Check if NOSI exists in database (using in-memory lookup)
             $nosi = $row['nosi'] ?? null;
@@ -421,6 +423,27 @@ class UploadDataController extends Controller
             
             if ($nosi && isset($existingNosi[$nosi])) {
                 $exists = true;
+            }
+            
+            // Separate based on duplicate status
+            if ($exists) {
+                $duplicateCount++;
+                // Only store first 50 duplicates for preview
+                if (count($duplicateData) < 50) {
+                    $row['is_duplicate'] = true;
+                    $row['status'] = 'Duplikat';
+                    $duplicateData[] = $row;
+                }
+            } else {
+                // Store ALL new data for import (this is what we need)
+                $row['is_duplicate'] = false;
+                $row['status'] = 'Baru';
+                $newData[] = $row;
+                
+                // Also store first 50 for preview
+                if (count($previewNew) < 50) {
+                    $previewNew[] = $row;
+                }
             }
             
             // Log only every N rows or first/last 10 rows
@@ -431,26 +454,24 @@ class UploadDataController extends Controller
                 $logMessage = "Row " . ($index + 1) . ": NOSI={$nosi} | Status={$status}";
                 \Log::info($logMessage);
                 
-                // Add to log array (keep last 50 logs to reduce memory)
+                // Add to log array (keep last 30 logs to reduce memory)
                 $logMessages[] = [
                     'message' => $logMessage,
                     'type' => $exists ? 'warning' : 'info',
                     'timestamp' => date('H:i:s')
                 ];
                 
-                // Keep only last 50 logs
-                if (count($logMessages) > 50) {
+                // Keep only last 30 logs (reduced from 50)
+                if (count($logMessages) > 30) {
                     array_shift($logMessages);
                 }
-            }
-            
-            // Update progress (every 1% or at key milestones)
-            if ($shouldLog) {
+                
+                // Update progress (every 1% or at key milestones)
                 $progressData = [
                     'current' => $index + 1,
                     'total' => $totalRows,
                     'status' => 'processing',
-                    'log' => "Checking duplicates: " . ($index + 1) . "/{$totalRows}",
+                    'log' => "Checking: " . ($index + 1) . "/{$totalRows}",
                     'logs' => $logMessages,
                     'duplicate_count' => $duplicateCount,
                     'new_count' => count($newData),
@@ -462,85 +483,58 @@ class UploadDataController extends Controller
                 }
             }
             
-            // NO usleep() - removed delay for faster processing
-            
-            // Add flags to the row (must be stored back to $data array)
-            $data[$index]['is_duplicate'] = $exists;
-            $data[$index]['status'] = $exists ? 'Duplikat' : 'Baru';
-            
-            if ($exists) {
-                $duplicateCount++;
-                $duplicateData[] = $data[$index];
-            } else {
-                $newData[] = $data[$index];
-            }
-            
-            // Memory cleanup every 1000 rows
-            if (($index + 1) % 1000 === 0) {
+            // Memory cleanup every 500 rows (more frequent)
+            if (($index + 1) % 500 === 0) {
                 gc_collect_cycles();
             }
+            
+            // Free the original row from $data array to reduce memory
+            unset($data[$index]);
         }
         
         \Log::info('=== DUPLICATE CHECK COMPLETE ===');
-        \Log::info('Total: ' . count($data) . ' | New: ' . count($newData) . ' | Duplicate: ' . $duplicateCount);
+        \Log::info('Total: ' . ($duplicateCount + count($newData)) . ' | New: ' . count($newData) . ' | Duplicate: ' . $duplicateCount);
         
-        // Store for session or cache for DataTables
-        session(['upload_preview' => $data]);
+        // Merge preview data (max 100 rows total)
+        $previewData = array_merge($previewNew, $duplicateData);
+        
+        session([
+            'upload_preview' => $previewData, // Max 100 rows for preview
+            'upload_new_data' => $newData, // Only new data for import
+            'upload_stats' => [
+                'total_rows' => $duplicateCount + count($newData),
+                'new_rows' => count($newData),
+                'duplicate_rows' => $duplicateCount,
+            ]
+        ]);
+        
+        \Log::info('Session stored - Preview: ' . count($previewData) . ' rows, New data: ' . count($newData) . ' rows');
         
         // Force final garbage collection
-        unset($existingNosi, $allNosi, $logMessages);
+        unset($existingNosi, $allNosi, $logMessages, $data, $duplicateData, $previewNew, $previewData);
         gc_collect_cycles();
         
         return [
-            'total_rows' => count($data),
+            'total_rows' => $duplicateCount + count($newData),
             'new_rows' => count($newData),
             'duplicate_rows' => $duplicateCount,
-            'data' => $newData,
-            'all_data' => $data, // All data with duplicate status
+            'data' => $newData, // Return new data for import
         ];
     }
     
     /**
      * Get preview data (max 10 rows, no pagination)
-     * Sorted: Data Baru (New) first, then by date (newest first)
+     * Now using pre-filtered preview data from session (max 100 rows)
      */
     public function getPreviewData(Request $request)
     {
         $data = session('upload_preview', []);
         
-        // Separate new and duplicate data
-        $newData = [];
-        $duplicateData = [];
+        // Already pre-filtered (50 new + 50 duplicate max)
+        // Just show first 10
+        $previewData = array_slice($data, 0, 10);
         
-        foreach ($data as $row) {
-            $isDuplicate = isset($row['is_duplicate']) ? $row['is_duplicate'] : false;
-            if ($isDuplicate) {
-                $duplicateData[] = $row;
-            } else {
-                $newData[] = $row;
-            }
-        }
-        
-        // Sort each group by tgl_kirim descending (newest first)
-        usort($newData, function($a, $b) {
-            $dateA = isset($a['tgl_kirim']) ? strtotime($a['tgl_kirim']) : 0;
-            $dateB = isset($b['tgl_kirim']) ? strtotime($b['tgl_kirim']) : 0;
-            return $dateB - $dateA; // Descending
-        });
-        
-        usort($duplicateData, function($a, $b) {
-            $dateA = isset($a['tgl_kirim']) ? strtotime($a['tgl_kirim']) : 0;
-            $dateB = isset($b['tgl_kirim']) ? strtotime($b['tgl_kirim']) : 0;
-            return $dateB - $dateA; // Descending
-        });
-        
-        // Merge: New data first, then duplicate data
-        $sortedData = array_merge($newData, $duplicateData);
-        
-        // Limit to 10 rows for preview to keep it light
-        $previewData = array_slice($sortedData, 0, 10);
-        
-        \Log::info('Preview request - Total: ' . count($data) . ' | New: ' . count($newData) . ' | Duplicate: ' . count($duplicateData) . ' | Showing: ' . count($previewData) . ' (Sorted: Baru first, then by tgl_kirim desc)');
+        \Log::info('Preview request - Showing: ' . count($previewData) . ' rows from ' . count($data) . ' preview data');
         
         return datatables()
             ->of(collect($previewData))
@@ -564,7 +558,9 @@ class UploadDataController extends Controller
      */
     public function import(Request $request)
     {
-        $data = $request->input('data', []);
+        // Get data from session instead of request (to avoid payload size limits)
+        $data = session('upload_new_data', []);
+        $stats = session('upload_stats', []);
         
         if (empty($data)) {
             return response()->json(['error' => 'Tidak ada data untuk diimport'], 400);
@@ -595,10 +591,10 @@ class UploadDataController extends Controller
             
             // Get file info from session
             $fileInfo = session('upload_file_info', []);
-            $allData = session('upload_preview', []);
             
             // OPTIMIZATION: Use batch insert for better performance
-            $chunks = array_chunk($data, 500); // Process 500 rows at a time
+            // NO need to check duplicates again - data is already filtered
+            $chunks = array_chunk($data, 1000); // Larger chunks since no duplicate check
             $processedRows = 0;
             $logMessages = [];
             $updateInterval = max(1, (int)($totalRows / 100)); // Update every 1%
@@ -610,33 +606,20 @@ class UploadDataController extends Controller
                 foreach ($chunk as $row) {
                     $processedRows++;
                     
-                    // Remove flags
+                    // Remove flags if exists
                     unset($row['is_duplicate']);
                     unset($row['status']);
                     
-                    // Only add to batch if NOSI not exists
-                    $nosi = $row['nosi'] ?? null;
-                    $exists = false;
-                    
-                    if ($nosi) {
-                        $exists = ShipmentData::where('nosi', $nosi)->exists();
-                    }
-                    
-                    if (!$exists) {
-                        // Add timestamps for batch insert
-                        $row['created_at'] = now();
-                        $row['updated_at'] = now();
-                        $batchInsert[] = $row;
-                    } else {
-                        $skipped++;
-                    }
+                    // Add timestamps for batch insert
+                    $row['created_at'] = now();
+                    $row['updated_at'] = now();
+                    $batchInsert[] = $row;
                     
                     // Log only every N rows
                     $shouldLog = ($processedRows % $updateInterval === 0) || ($processedRows === $totalRows);
                     
                     if ($shouldLog) {
-                        $status = $exists ? 'SKIPPED' : 'QUEUED';
-                        $detailedLog = "Processing: {$processedRows}/{$totalRows} | Queued: " . count($batchInsert) . " | Skipped: {$skipped}";
+                        $detailedLog = "Processing: {$processedRows}/{$totalRows} | Batch size: " . count($batchInsert);
                         \Log::info($detailedLog);
                         
                         // Add to log array
@@ -652,7 +635,7 @@ class UploadDataController extends Controller
                         }
                         
                         // Summary log message
-                        $summaryLog = "Import progress: {$processedRows}/{$totalRows} | Inserted: {$imported} | Skipped: {$skipped}";
+                        $summaryLog = "Import progress: {$processedRows}/{$totalRows} | Inserted: {$imported}";
                         
                         // Update progress file with logs array
                         file_put_contents($progressFile, json_encode([
@@ -704,15 +687,17 @@ class UploadDataController extends Controller
                 'filename' => $fileInfo['filename'] ?? 'unknown',
                 'file_extension' => $fileInfo['extension'] ?? 'unknown',
                 'file_size' => $fileInfo['size'] ?? 0,
-                'total_rows' => count($allData),
+                'total_rows' => $stats['total_rows'] ?? 0,
                 'new_rows' => $imported,
-                'duplicate_rows' => count($allData) - $imported,
+                'duplicate_rows' => $stats['duplicate_rows'] ?? 0,
                 'skipped_rows' => $skipped,
                 'notes' => "Import berhasil: {$imported} data baru ditambahkan, {$skipped} data duplikat diskip.",
             ]);
             
             // Clear session
             session()->forget('upload_preview');
+            session()->forget('upload_new_data');
+            session()->forget('upload_stats');
             session()->forget('upload_file_info');
             
             // Cleanup progress file
