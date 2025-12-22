@@ -104,9 +104,17 @@ class UploadDataController extends Controller
                 unlink($progressFile);
             }
             
+            \Log::info('=== PROCESS COMPLETE ===');
+            \Log::info('Returning result to frontend...');
+            
             return response()->json($result);
             
         } catch (\Exception $e) {
+            \Log::error('=== PROCESS FAILED ===');
+            \Log::error('Error message: ' . $e->getMessage());
+            \Log::error('Error file: ' . $e->getFile() . ':' . $e->getLine());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            
             // Cleanup progress file on error
             if (file_exists($progressFile)) {
                 unlink($progressFile);
@@ -355,7 +363,7 @@ class UploadDataController extends Controller
     }
     
     /**
-     * Check for duplicates by checking NOSI only
+     * Check for duplicates by checking NOSI only (OPTIMIZED)
      */
     private function checkDuplicates($data)
     {
@@ -371,52 +379,73 @@ class UploadDataController extends Controller
         $sessionId = session()->getId();
         $progressFile = storage_path("app/upload_progress_{$sessionId}.json");
         
+        // OPTIMIZATION: Get ALL existing NOSI from database in one query
+        $allNosi = array_filter(array_column($data, 'nosi')); // Extract all NOSI from uploaded data
+        $existingNosi = [];
+        
+        if (!empty($allNosi)) {
+            \Log::info('Fetching existing NOSI from database...');
+            $existingNosi = ShipmentData::whereIn('nosi', $allNosi)
+                ->pluck('nosi')
+                ->flip() // Convert to associative array for faster lookup
+                ->toArray();
+            \Log::info('Found ' . count($existingNosi) . ' existing NOSI in database');
+        }
+        
         // Initialize log array in progress file
         $logMessages = [];
+        $totalRows = count($data);
+        $updateInterval = max(1, (int)($totalRows / 100)); // Update progress every 1%
         
         foreach ($data as $index => $row) {
-            // Check if NOSI exists in database
+            // Check if NOSI exists in database (using in-memory lookup)
             $nosi = $row['nosi'] ?? null;
             $exists = false;
             
-            if ($nosi) {
-                $exists = ShipmentData::where('nosi', $nosi)->exists();
+            if ($nosi && isset($existingNosi[$nosi])) {
+                $exists = true;
             }
             
-            // Log info untuk SETIAP baris
-            $status = $exists ? 'DUPLIKAT' : 'BARU';
-            $logMessage = "Row " . ($index + 1) . ": NOSI={$nosi} | Status={$status}";
-            \Log::info($logMessage);
+            // Log only every N rows or first/last 10 rows
+            $shouldLog = ($index < 10) || ($index >= $totalRows - 10) || (($index + 1) % $updateInterval === 0);
             
-            // Add to log array (keep last 100 logs to avoid memory issues)
-            $logMessages[] = [
-                'message' => $logMessage,
-                'type' => $exists ? 'warning' : 'info',
-                'timestamp' => date('H:i:s')
-            ];
-            
-            // Keep only last 100 logs
-            if (count($logMessages) > 100) {
-                array_shift($logMessages);
+            if ($shouldLog) {
+                $status = $exists ? 'DUPLIKAT' : 'BARU';
+                $logMessage = "Row " . ($index + 1) . ": NOSI={$nosi} | Status={$status}";
+                \Log::info($logMessage);
+                
+                // Add to log array (keep last 50 logs to reduce memory)
+                $logMessages[] = [
+                    'message' => $logMessage,
+                    'type' => $exists ? 'warning' : 'info',
+                    'timestamp' => date('H:i:s')
+                ];
+                
+                // Keep only last 50 logs
+                if (count($logMessages) > 50) {
+                    array_shift($logMessages);
+                }
             }
             
-            // Update progress with log
-            $progressData = [
-                'current' => $index + 1,
-                'total' => count($data),
-                'status' => 'processing',
-                'log' => $logMessage, // Current log for status bar
-                'logs' => $logMessages, // Array of recent logs for terminal
-                'duplicate_count' => $duplicateCount,
-                'new_count' => count($newData)
-            ];
-            
-            if (file_exists($progressFile)) {
-                file_put_contents($progressFile, json_encode($progressData));
+            // Update progress (every 1% or at key milestones)
+            if ($shouldLog) {
+                $progressData = [
+                    'current' => $index + 1,
+                    'total' => $totalRows,
+                    'status' => 'processing',
+                    'log' => "Checking duplicates: " . ($index + 1) . "/{$totalRows}",
+                    'logs' => $logMessages,
+                    'duplicate_count' => $duplicateCount,
+                    'new_count' => count($newData),
+                    'percentage' => round((($index + 1) / $totalRows) * 100, 1)
+                ];
+                
+                if (file_exists($progressFile)) {
+                    file_put_contents($progressFile, json_encode($progressData));
+                }
             }
             
-            // Small delay to allow frontend to poll
-            usleep(10000); // 10ms delay
+            // NO usleep() - removed delay for faster processing
             
             // Add flags to the row (must be stored back to $data array)
             $data[$index]['is_duplicate'] = $exists;
@@ -428,6 +457,11 @@ class UploadDataController extends Controller
             } else {
                 $newData[] = $data[$index];
             }
+            
+            // Memory cleanup every 1000 rows
+            if (($index + 1) % 1000 === 0) {
+                gc_collect_cycles();
+            }
         }
         
         \Log::info('=== DUPLICATE CHECK COMPLETE ===');
@@ -435,6 +469,10 @@ class UploadDataController extends Controller
         
         // Store for session or cache for DataTables
         session(['upload_preview' => $data]);
+        
+        // Force final garbage collection
+        unset($existingNosi, $allNosi, $logMessages);
+        gc_collect_cycles();
         
         return [
             'total_rows' => count($data),
@@ -505,7 +543,7 @@ class UploadDataController extends Controller
     }
     
     /**
-     * Import new data to database
+     * Import new data to database (OPTIMIZED)
      */
     public function import(Request $request)
     {
@@ -542,12 +580,16 @@ class UploadDataController extends Controller
             $fileInfo = session('upload_file_info', []);
             $allData = session('upload_preview', []);
             
-            // Import in chunks for better performance
-            $chunks = array_chunk($data, 100); // Process 100 rows at a time
+            // OPTIMIZATION: Use batch insert for better performance
+            $chunks = array_chunk($data, 500); // Process 500 rows at a time
             $processedRows = 0;
             $logMessages = [];
+            $updateInterval = max(1, (int)($totalRows / 100)); // Update every 1%
             
             foreach ($chunks as $chunkIndex => $chunk) {
+                // Prepare batch data
+                $batchInsert = [];
+                
                 foreach ($chunk as $row) {
                     $processedRows++;
                     
@@ -555,7 +597,7 @@ class UploadDataController extends Controller
                     unset($row['is_duplicate']);
                     unset($row['status']);
                     
-                    // Only insert if NOSI not exists (double check)
+                    // Only add to batch if NOSI not exists
                     $nosi = $row['nosi'] ?? null;
                     $exists = false;
                     
@@ -564,51 +606,76 @@ class UploadDataController extends Controller
                     }
                     
                     if (!$exists) {
-                        ShipmentData::create($row);
-                        $imported++;
-                        $status = 'INSERTED';
-                        $logType = 'success';
+                        // Add timestamps for batch insert
+                        $row['created_at'] = now();
+                        $row['updated_at'] = now();
+                        $batchInsert[] = $row;
                     } else {
                         $skipped++;
-                        $status = 'SKIPPED';
-                        $logType = 'warning';
                     }
                     
-                    // Create detailed log message for each row
-                    $detailedLog = "Row {$processedRows}: NOSI={$nosi} | Status={$status}";
-                    \Log::info($detailedLog);
+                    // Log only every N rows
+                    $shouldLog = ($processedRows % $updateInterval === 0) || ($processedRows === $totalRows);
                     
-                    // Add to log array
-                    $logMessages[] = [
-                        'message' => $detailedLog,
-                        'type' => $logType,
-                        'timestamp' => date('H:i:s')
-                    ];
-                    
-                    // Keep only last 100 logs
-                    if (count($logMessages) > 100) {
-                        array_shift($logMessages);
+                    if ($shouldLog) {
+                        $status = $exists ? 'SKIPPED' : 'QUEUED';
+                        $detailedLog = "Processing: {$processedRows}/{$totalRows} | Queued: " . count($batchInsert) . " | Skipped: {$skipped}";
+                        \Log::info($detailedLog);
+                        
+                        // Add to log array
+                        $logMessages[] = [
+                            'message' => $detailedLog,
+                            'type' => 'info',
+                            'timestamp' => date('H:i:s')
+                        ];
+                        
+                        // Keep only last 50 logs
+                        if (count($logMessages) > 50) {
+                            array_shift($logMessages);
+                        }
+                        
+                        // Summary log message
+                        $summaryLog = "Import progress: {$processedRows}/{$totalRows} | Inserted: {$imported} | Skipped: {$skipped}";
+                        
+                        // Update progress file with logs array
+                        file_put_contents($progressFile, json_encode([
+                            'status' => 'importing',
+                            'current' => $processedRows,
+                            'total' => $totalRows,
+                            'log' => $summaryLog,
+                            'logs' => $logMessages,
+                            'imported' => $imported,
+                            'skipped' => $skipped,
+                            'percentage' => round(($processedRows / $totalRows) * 100, 1)
+                        ]));
                     }
-                    
-                    // Summary log message
-                    $summaryLog = "Import progress: {$processedRows}/{$totalRows} | Inserted: {$imported} | Skipped: {$skipped}";
-                    
-                    // Update progress file with logs array
-                    file_put_contents($progressFile, json_encode([
-                        'status' => 'importing',
-                        'current' => $processedRows,
-                        'total' => $totalRows,
-                        'log' => $summaryLog,
-                        'logs' => $logMessages,
-                        'imported' => $imported,
-                        'skipped' => $skipped
-                    ]));
-                    
-                    // Small delay to allow frontend polling
-                    usleep(5000); // 5ms delay
+                }
+                
+                // Batch insert all rows in this chunk
+                if (!empty($batchInsert)) {
+                    try {
+                        DB::table('shipment_data')->insert($batchInsert);
+                        $imported += count($batchInsert);
+                        \Log::info("Batch inserted: " . count($batchInsert) . " rows");
+                    } catch (\Exception $e) {
+                        \Log::error("Batch insert failed: " . $e->getMessage());
+                        // Fallback to individual inserts
+                        foreach ($batchInsert as $rowData) {
+                            try {
+                                unset($rowData['created_at']);
+                                unset($rowData['updated_at']);
+                                ShipmentData::create($rowData);
+                                $imported++;
+                            } catch (\Exception $e2) {
+                                \Log::error("Individual insert failed for NOSI: " . ($rowData['nosi'] ?? 'unknown'));
+                                $skipped++;
+                            }
+                        }
+                    }
                 }
                 
                 // Memory cleanup after each chunk
+                unset($batchInsert);
                 gc_collect_cycles();
             }
             
@@ -644,6 +711,7 @@ class UploadDataController extends Controller
             
         } catch (\Exception $e) {
             \Log::error('Import failed: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
             
             // Cleanup progress file on error
             if (file_exists($progressFile)) {
