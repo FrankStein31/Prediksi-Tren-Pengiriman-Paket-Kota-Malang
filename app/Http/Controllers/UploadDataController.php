@@ -76,8 +76,8 @@ class UploadDataController extends Controller
         ]));
         
         // Increase memory limit and execution time
-        ini_set('memory_limit', '1024M');
-        set_time_limit(300); // 5 minutes
+        ini_set('memory_limit', '-1'); // No memory limit
+        set_time_limit(0); // No time limit
         
         try {
             // Store file info in session for later use in import
@@ -518,6 +518,10 @@ class UploadDataController extends Controller
         // Initialize progress tracking for import
         $sessionId = session()->getId();
         $progressFile = storage_path("app/upload_progress_{$sessionId}.json");
+        
+        // Increase memory limit and execution time
+        ini_set('memory_limit', '-1'); // No memory limit
+        set_time_limit(0); // No time limit
         
         try {
             $imported = 0;
