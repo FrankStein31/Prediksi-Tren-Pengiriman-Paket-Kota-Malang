@@ -45,8 +45,9 @@ class VisualisasiController extends Controller
         $customDate = $request->input('custom_date');
         
         try {
-            // Flask API URL
-            $apiUrl = 'http://127.0.0.1:5000/api/predict';
+            // Flask API URL from config
+            $flaskApiUrl = config('flask.api_url');
+            $apiUrl = rtrim($flaskApiUrl, '/') . config('flask.endpoints.predict');
             
             // Prepare request data
             $requestData = [
@@ -62,8 +63,8 @@ class VisualisasiController extends Controller
             
             // Make HTTP request to Flask API
             $client = new \GuzzleHttp\Client([
-                'timeout' => 120, // 2 minutes timeout
-                'connect_timeout' => 10
+                'timeout' => config('flask.timeout', 120),
+                'connect_timeout' => config('flask.connect_timeout', 10)
             ]);
             
             $response = $client->post($apiUrl, [
@@ -157,9 +158,11 @@ class VisualisasiController extends Controller
                 'message' => $e->getMessage()
             ]);
             
+            $flaskApiUrl = config('flask.api_url');
+            
             return response()->json([
                 'error' => 'Cannot connect to Flask API',
-                'message' => 'Pastikan Flask API server sedang berjalan di http://127.0.0.1:5000',
+                'message' => "Pastikan Flask API server sedang berjalan di {$flaskApiUrl}",
                 'details' => 'Jalankan: python app.py di folder python/'
             ], 503);
             

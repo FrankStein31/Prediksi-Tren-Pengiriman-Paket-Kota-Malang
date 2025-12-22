@@ -10,3 +10,4 @@ mysql-connector-python==8.2.0
 flask==3.1.2
 flask-cors==6.0.1
 statsmodels==0.14.6
+# gunicorn==21.2.0

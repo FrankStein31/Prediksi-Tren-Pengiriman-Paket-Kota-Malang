@@ -24,12 +24,12 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)  # Enable CORS for Laravel integration
 
-# Configuration
+# Configuration - Support environment variables
 DB_CONFIG = {
-    'host': 'localhost',
-    'database': 'prediksi_paket',
-    'user': 'root',
-    'password': ''
+    'host': os.environ.get('DB_HOST', 'localhost'),
+    'database': os.environ.get('DB_NAME', 'prediksi_paket'),
+    'user': os.environ.get('DB_USER', 'root'),
+    'password': os.environ.get('DB_PASSWORD', '')
 }
 
 MODELS_DIR = os.path.join(os.path.dirname(__file__), 'models')
@@ -426,21 +426,40 @@ def internal_error(error):
     return jsonify({'error': 'Internal server error'}), 500
 
 
+# WSGI application entry point
+# This is used by WSGI servers like Gunicorn or uWSGI
+application = app
+
+
 if __name__ == '__main__':
+    # Get environment and configuration
+    FLASK_ENV = os.environ.get('FLASK_ENV', 'local')
+    FLASK_HOST = os.environ.get('FLASK_HOST', '127.0.0.1')
+    FLASK_PORT = int(os.environ.get('FLASK_PORT', 5000))
+    FLASK_DEBUG = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'
+    
     print('=' * 60)
     print('🚀 Prophet Prediction API Server')
     print('=' * 60)
-    print(f'Environment: Development')
+    print(f'Environment: {FLASK_ENV}')
     print(f'Database: {DB_CONFIG["database"]}')
     print(f'Models Directory: {MODELS_DIR}')
     print(f'Available Kecamatans: {", ".join(KECAMATANS)}')
     print('=' * 60)
-    print('Starting server on http://127.0.0.1:5000')
-    print('Press CTRL+C to stop')
-    print('=' * 60)
     
+    if FLASK_ENV == 'production':
+        print('⚠️  PRODUCTION MODE')
+        print('⚠️  For production, use WSGI server like Gunicorn:')
+        print(f'   gunicorn -w 4 -b {FLASK_HOST}:{FLASK_PORT} app:application')
+        print('=' * 60)
+    else:
+        print(f'Starting development server on http://{FLASK_HOST}:{FLASK_PORT}')
+        print('Press CTRL+C to stop')
+        print('=' * 60)
+    
+    # Run development server
     app.run(
-        host='127.0.0.1',
-        port=5000,
-        debug=True
+        host=FLASK_HOST,
+        port=FLASK_PORT,
+        debug=FLASK_DEBUG
     )
