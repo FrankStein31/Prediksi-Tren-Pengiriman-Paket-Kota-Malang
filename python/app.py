@@ -141,14 +141,33 @@ def load_prophet_model(kecamatan):
             return None, f"Models directory not found: {MODELS_DIR}"
     
     try:
+        # Check file permissions and size
+        file_size = os.path.getsize(model_path)
+        logger.info(f"Model file size: {file_size} bytes ({file_size / (1024*1024):.2f} MB)")
+        
+        # Check if file is readable
+        if not os.access(model_path, os.R_OK):
+            logger.error(f"Model file is not readable: {model_path}")
+            return None, f"Model file permission denied: {model_filename}"
+        
+        # Try to load model
+        logger.info(f"Attempting to load model: {model_filename}")
         model = joblib.load(model_path)
         logger.info(f"Model loaded successfully: {model_filename}")
         return model, None
     except Exception as e:
-        logger.error(f"Error loading model {model_filename}: {str(e)}")
+        error_type = type(e).__name__
+        error_msg = str(e)
+        logger.error(f"Error loading model {model_filename}")
+        logger.error(f"Error type: {error_type}")
+        logger.error(f"Error message: {error_msg}")
+        
         import traceback
-        logger.error(f"Traceback: {traceback.format_exc()}")
-        return None, f"Error loading model: {str(e)}"
+        full_traceback = traceback.format_exc()
+        logger.error(f"Full traceback:\n{full_traceback}")
+        
+        # Return detailed error
+        return None, f"Error loading model: {error_type} - {error_msg}"
 
 
 @app.route('/')
