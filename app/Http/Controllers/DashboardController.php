@@ -56,14 +56,26 @@ class DashboardController extends Controller
             
             // Get MAPE Comparison sheet
             $mapeSheet = $spreadsheet->getSheetByName('MAPE Comparison');
+            if (!$mapeSheet) {
+                \Log::error('MAPE Comparison sheet not found in Excel file');
+                return $this->modelExplanationDummy();
+            }
             $mapeData = $mapeSheet->toArray();
             
             // Get MAE Comparison sheet
             $maeSheet = $spreadsheet->getSheetByName('MAE Comparison');
+            if (!$maeSheet) {
+                \Log::error('MAE Comparison sheet not found in Excel file');
+                return $this->modelExplanationDummy();
+            }
             $maeData = $maeSheet->toArray();
             
             // Get RMSE Comparison sheet
             $rmseSheet = $spreadsheet->getSheetByName('RMSE Comparison');
+            if (!$rmseSheet) {
+                \Log::error('RMSE Comparison sheet not found in Excel file');
+                return $this->modelExplanationDummy();
+            }
             $rmseData = $rmseSheet->toArray();
             
             // Process data

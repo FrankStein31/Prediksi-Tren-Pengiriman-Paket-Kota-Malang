@@ -125,13 +125,29 @@ def load_prophet_model(kecamatan):
     model_filename = f"prophet_model_{kecamatan.upper()}.pkl"
     model_path = os.path.join(MODELS_DIR, model_filename)
     
+    # Log untuk debugging
+    logger.info(f"Looking for model at: {model_path}")
+    logger.info(f"Models directory: {MODELS_DIR}")
+    logger.info(f"Models directory exists: {os.path.exists(MODELS_DIR)}")
+    
     if not os.path.exists(model_path):
-        return None, f"Model file not found: {model_path}"
+        # List available files untuk debugging
+        if os.path.exists(MODELS_DIR):
+            available_files = os.listdir(MODELS_DIR)
+            logger.error(f"Model not found. Available files in {MODELS_DIR}: {available_files}")
+            return None, f"Model file not found: {model_filename}. Available: {available_files}"
+        else:
+            logger.error(f"Models directory does not exist: {MODELS_DIR}")
+            return None, f"Models directory not found: {MODELS_DIR}"
     
     try:
         model = joblib.load(model_path)
+        logger.info(f"Model loaded successfully: {model_filename}")
         return model, None
     except Exception as e:
+        logger.error(f"Error loading model {model_filename}: {str(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return None, f"Error loading model: {str(e)}"
 
 
