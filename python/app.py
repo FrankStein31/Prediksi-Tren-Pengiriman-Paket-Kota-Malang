@@ -178,19 +178,44 @@ def health():
         else:
             db_status = 'FAILED'
         
-        # Check models
+        # Check models with detailed info
         models_status = []
         for kec in KECAMATANS:
             model_path = os.path.join(MODELS_DIR, f"prophet_model_{kec}.pkl")
-            models_status.append({
+            model_exists = os.path.exists(model_path)
+            
+            model_info = {
                 'kecamatan': kec,
-                'exists': os.path.exists(model_path)
-            })
+                'exists': model_exists,
+                'path': model_path
+            }
+            
+            # Add file size if exists
+            if model_exists:
+                try:
+                    file_size = os.path.getsize(model_path)
+                    model_info['size_bytes'] = file_size
+                    model_info['size_mb'] = round(file_size / (1024 * 1024), 2)
+                except:
+                    model_info['size_error'] = 'Cannot read file size'
+            
+            models_status.append(model_info)
+        
+        # List all files in models directory
+        models_dir_files = []
+        if os.path.exists(MODELS_DIR):
+            try:
+                models_dir_files = os.listdir(MODELS_DIR)
+            except:
+                models_dir_files = ['ERROR: Cannot list directory']
         
         return jsonify({
             'status': 'healthy',
             'database': db_status,
             'models': models_status,
+            'models_directory': MODELS_DIR,
+            'models_directory_exists': os.path.exists(MODELS_DIR),
+            'models_directory_files': models_dir_files,
             'timestamp': datetime.now().isoformat()
         })
     except Exception as e:

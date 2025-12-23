@@ -45,9 +45,53 @@ class VisualisasiController extends Controller
         $customDate = $request->input('custom_date');
         
         try {
-            // Flask API URL from config
+            // Check Flask API health first
             $flaskApiUrl = config('flask.api_url');
+            $healthUrl = rtrim($flaskApiUrl, '/') . '/health';
+            
+            try {
+                $healthClient = new \GuzzleHttp\Client(['timeout' => 5, 'http_errors' => false]);
+                $healthResponse = $healthClient->get($healthUrl);
+                
+                if ($healthResponse->getStatusCode() === 200) {
+                    $healthData = json_decode($healthResponse->getBody()->getContents(), true);
+                    
+                    // Check if specific model exists
+                    if (isset($healthData['models'])) {
+                        $modelFound = false;
+                        foreach ($healthData['models'] as $model) {
+                            if ($model['kecamatan'] === $kecamatan) {
+                                $modelFound = true;
+                                if (!$model['exists']) {
+                                    return response()->json([
+                                        'error' => 'Model tidak tersedia',
+                                        'message' => 'Model untuk ' . $kecamatan . ' tidak ditemukan di server.',
+                                        'details' => 'File prophet_model_' . $kecamatan . '.pkl tidak ada',
+                                        'health_check' => $healthData
+                                    ], 404);
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+            } catch (\Exception $healthError) {
+                // Health check failed, but continue anyway
+                \Log::warning('Health check failed, continuing with prediction request', [
+                    'error' => $healthError->getMessage()
+                ]);
+            }
+            
+            // Flask API URL from config
             $apiUrl = rtrim($flaskApiUrl, '/') . config('flask.endpoints.predict');
+            
+            \Log::info('Calling Flask API', [
+                'url' => $apiUrl,
+                'kecamatan' => $kecamatan,
+                'weeks_historical' => $weeksHistorical,
+                'weeks_forecast' => $weeksForecast,
+                'date_mode' => $dateMode
+            ]);
             
             // Prepare request data
             $requestData = [
@@ -64,7 +108,8 @@ class VisualisasiController extends Controller
             // Make HTTP request to Flask API
             $client = new \GuzzleHttp\Client([
                 'timeout' => config('flask.timeout', 120),
-                'connect_timeout' => config('flask.connect_timeout', 10)
+                'connect_timeout' => config('flask.connect_timeout', 10),
+                'http_errors' => false // Don't throw exception on 4xx/5xx
             ]);
             
             $response = $client->post($apiUrl, [
@@ -77,19 +122,38 @@ class VisualisasiController extends Controller
             
             $statusCode = $response->getStatusCode();
             $body = $response->getBody()->getContents();
+            
+            \Log::info('Flask API response', [
+                'status' => $statusCode,
+                'body_length' => strlen($body),
+                'body_preview' => substr($body, 0, 200)
+            ]);
+            
             $data = json_decode($body, true);
             
             if ($statusCode !== 200) {
-                \Log::error('Flask API error', [
+                \Log::error('Flask API error response', [
                     'status_code' => $statusCode,
-                    'response' => $data
+                    'response' => $data,
+                    'kecamatan' => $kecamatan
                 ]);
+                
+                // Jika 404, kemungkinan model tidak ada
+                if ($statusCode === 404) {
+                    return response()->json([
+                        'error' => 'Model tidak tersedia',
+                        'message' => 'Model prediksi untuk ' . $kecamatan . ' tidak ditemukan di server.',
+                        'details' => $data['error'] ?? 'Model file not found',
+                        'suggestion' => 'Pastikan semua file model (.pkl) sudah diupload ke server di folder python/models/',
+                        'required_file' => 'prophet_model_' . $kecamatan . '.pkl'
+                    ], 404);
+                }
                 
                 return response()->json([
                     'error' => 'Failed to generate prediction',
                     'message' => $data['error'] ?? $data['message'] ?? 'Unknown error',
-                    'details' => 'Pastikan Flask API sedang berjalan'
-                ], 500);
+                    'details' => 'Flask API returned status ' . $statusCode
+                ], $statusCode);
             }
             
             if (json_last_error() !== JSON_ERROR_NONE) {
@@ -106,9 +170,30 @@ class VisualisasiController extends Controller
             
             // Check if API returned an error
             if (isset($data['error']) || !isset($data['success']) || !$data['success']) {
-                return response()->json([
+                // Log detailed error untuk debugging
+                \Log::error('Flask API returned error', [
                     'error' => $data['error'] ?? 'Unknown error',
-                    'message' => $data['message'] ?? ''
+                    'message' => $data['message'] ?? '',
+                    'full_response' => $data
+                ]);
+                
+                $errorMessage = $data['error'] ?? 'Unknown error';
+                
+                // Check jika model not found
+                if (strpos($errorMessage, 'Model file not found') !== false || 
+                    strpos($errorMessage, 'Error loading model') !== false) {
+                    return response()->json([
+                        'error' => 'Model tidak ditemukan',
+                        'message' => 'Model untuk kecamatan ' . $kecamatan . ' tidak tersedia di server. Hubungi administrator.',
+                        'details' => $errorMessage,
+                        'suggestion' => 'Pastikan file prophet_model_' . $kecamatan . '.pkl ada di folder python/models/ di server'
+                    ], 404);
+                }
+                
+                return response()->json([
+                    'error' => $errorMessage,
+                    'message' => $data['message'] ?? '',
+                    'kecamatan' => $kecamatan
                 ], 500);
             }
             
