@@ -54,6 +54,13 @@ class DashboardController extends Controller
         try {
             $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($excelPath);
             
+            // Check if we have at least 3 sheets
+            $sheetCount = $spreadsheet->getSheetCount();
+            if ($sheetCount < 3) {
+                \Log::error("Excel file has only {$sheetCount} sheets, need at least 3");
+                return $this->modelExplanationDummy();
+            }
+            
             // Ambil sheet berdasarkan index (urutan)
             // Sheet 0 = MAPE Comparison
             // Sheet 1 = MAE Comparison  
