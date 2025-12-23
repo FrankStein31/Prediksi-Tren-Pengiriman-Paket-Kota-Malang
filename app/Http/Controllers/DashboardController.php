@@ -54,16 +54,25 @@ class DashboardController extends Controller
         try {
             $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($excelPath);
             
-            // Get MAPE Comparison sheet
-            $mapeSheet = $spreadsheet->getSheetByName('MAPE Comparison');
+            // Check if we have at least 3 sheets
+            $sheetCount = $spreadsheet->getSheetCount();
+            if ($sheetCount < 3) {
+                \Log::error("Excel file has only {$sheetCount} sheets, need at least 3");
+                return $this->modelExplanationDummy();
+            }
+            
+            // Ambil sheet berdasarkan index (urutan)
+            // Sheet 0 = MAPE Comparison
+            // Sheet 1 = MAE Comparison  
+            // Sheet 2 = RMSE Comparison
+            
+            $mapeSheet = $spreadsheet->getSheet(0);
             $mapeData = $mapeSheet->toArray();
             
-            // Get MAE Comparison sheet
-            $maeSheet = $spreadsheet->getSheetByName('MAE Comparison');
+            $maeSheet = $spreadsheet->getSheet(1);
             $maeData = $maeSheet->toArray();
             
-            // Get RMSE Comparison sheet
-            $rmseSheet = $spreadsheet->getSheetByName('RMSE Comparison');
+            $rmseSheet = $spreadsheet->getSheet(2);
             $rmseData = $rmseSheet->toArray();
             
             // Process data
@@ -155,16 +164,16 @@ class DashboardController extends Controller
     {
         $comparison = [
             'BLIMBING' => [
-                'sarima_mape' => 12.45,
-                'prophet_mape' => 8.32,
-                'hw_mape' => 15.67,
+                'sarima_mape' => 12.15,
+                'prophet_mape' => 10.29,
+                'hw_mape' => 11.33,
                 'best_model' => 'Prophet',
-                'sarima_mae' => 245.5,
-                'prophet_mae' => 198.3,
-                'hw_mae' => 289.7,
-                'sarima_rmse' => 312.8,
-                'prophet_rmse' => 267.4,
-                'hw_rmse' => 356.9,
+                'sarima_mae' => 110.27,
+                'prophet_mae' => 99.68,
+                'hw_mae' => 99.33,
+                'sarima_rmse' => 153.45,
+                'prophet_rmse' => 189.11,
+                'hw_rmse' => 139.41,
             ],
             'KEDUNGKANDANG' => [
                 'sarima_mape' => 14.23,

@@ -24,12 +24,12 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)  # Enable CORS for Laravel integration
 
-# Configuration
+# Configuration - Support environment variables
 DB_CONFIG = {
-    'host': 'localhost',
-    'database': 'prediksi_paket',
-    'user': 'root',
-    'password': ''
+    'host': os.environ.get('DB_HOST', 'localhost'),
+    'database': os.environ.get('DB_NAME', 'prediksi_paket'),
+    'user': os.environ.get('DB_USER', 'root'),
+    'password': os.environ.get('DB_PASSWORD', '')
 }
 
 MODELS_DIR = os.path.join(os.path.dirname(__file__), 'models')
@@ -125,14 +125,79 @@ def load_prophet_model(kecamatan):
     model_filename = f"prophet_model_{kecamatan.upper()}.pkl"
     model_path = os.path.join(MODELS_DIR, model_filename)
     
+    # Log untuk debugging
+    logger.info(f"Looking for model at: {model_path}")
+    logger.info(f"Models directory: {MODELS_DIR}")
+    logger.info(f"Models directory exists: {os.path.exists(MODELS_DIR)}")
+    
     if not os.path.exists(model_path):
-        return None, f"Model file not found: {model_path}"
+        # List available files untuk debugging
+        if os.path.exists(MODELS_DIR):
+            available_files = os.listdir(MODELS_DIR)
+            logger.error(f"Model not found. Available files in {MODELS_DIR}: {available_files}")
+            return None, f"Model file not found: {model_filename}. Available: {available_files}"
+        else:
+            logger.error(f"Models directory does not exist: {MODELS_DIR}")
+            return None, f"Models directory not found: {MODELS_DIR}"
     
     try:
-        model = joblib.load(model_path)
-        return model, None
+        # Check file permissions and size
+        file_size = os.path.getsize(model_path)
+        logger.info(f"Model file size: {file_size} bytes ({file_size / (1024*1024):.2f} MB)")
+        
+        # Check if file is readable
+        if not os.access(model_path, os.R_OK):
+            logger.error(f"Model file is not readable: {model_path}")
+            return None, f"Model file permission denied: {model_filename}"
+        
+        # Log Python version
+        import sys
+        python_version = sys.version
+        logger.info(f"Python version: {python_version}")
+        
+        # Try to load model - handle pickle protocol issues
+        logger.info(f"Attempting to load model: {model_filename}")
+        
+        try:
+            # Try normal load first
+            model = joblib.load(model_path)
+            logger.info(f"Model loaded successfully with default protocol: {model_filename}")
+            return model, None
+        except (KeyError, ValueError) as protocol_error:
+            # KeyError 118 or similar = pickle protocol mismatch
+            logger.warning(f"Protocol error ({type(protocol_error).__name__}), trying alternative load methods...")
+            
+            # Try loading with pickle directly with different protocols
+            import pickle
+            
+            # Try protocol 4 (Python 3.4+)
+            try:
+                with open(model_path, 'rb') as f:
+                    model = pickle.load(f)
+                logger.info(f"Model loaded successfully with pickle.load: {model_filename}")
+                return model, None
+            except Exception as pickle_error:
+                logger.error(f"Pickle load failed: {type(pickle_error).__name__} - {str(pickle_error)}")
+                
+                # Return detailed error
+                return None, (f"Model pickle protocol incompatible. "
+                            f"Python {sys.version_info.major}.{sys.version_info.minor} cannot load this model. "
+                            f"Original error: {type(protocol_error).__name__} - {str(protocol_error)}. "
+                            f"Solution: Re-save model with protocol=4 using fix_model_protocol.py")
+        
     except Exception as e:
-        return None, f"Error loading model: {str(e)}"
+        error_type = type(e).__name__
+        error_msg = str(e)
+        logger.error(f"Error loading model {model_filename}")
+        logger.error(f"Error type: {error_type}")
+        logger.error(f"Error message: {error_msg}")
+        
+        import traceback
+        full_traceback = traceback.format_exc()
+        logger.error(f"Full traceback:\n{full_traceback}")
+        
+        # Return detailed error
+        return None, f"Error loading model: {error_type} - {error_msg}"
 
 
 @app.route('/')
@@ -162,19 +227,44 @@ def health():
         else:
             db_status = 'FAILED'
         
-        # Check models
+        # Check models with detailed info
         models_status = []
         for kec in KECAMATANS:
             model_path = os.path.join(MODELS_DIR, f"prophet_model_{kec}.pkl")
-            models_status.append({
+            model_exists = os.path.exists(model_path)
+            
+            model_info = {
                 'kecamatan': kec,
-                'exists': os.path.exists(model_path)
-            })
+                'exists': model_exists,
+                'path': model_path
+            }
+            
+            # Add file size if exists
+            if model_exists:
+                try:
+                    file_size = os.path.getsize(model_path)
+                    model_info['size_bytes'] = file_size
+                    model_info['size_mb'] = round(file_size / (1024 * 1024), 2)
+                except:
+                    model_info['size_error'] = 'Cannot read file size'
+            
+            models_status.append(model_info)
+        
+        # List all files in models directory
+        models_dir_files = []
+        if os.path.exists(MODELS_DIR):
+            try:
+                models_dir_files = os.listdir(MODELS_DIR)
+            except:
+                models_dir_files = ['ERROR: Cannot list directory']
         
         return jsonify({
             'status': 'healthy',
             'database': db_status,
             'models': models_status,
+            'models_directory': MODELS_DIR,
+            'models_directory_exists': os.path.exists(MODELS_DIR),
+            'models_directory_files': models_dir_files,
             'timestamp': datetime.now().isoformat()
         })
     except Exception as e:
@@ -426,21 +516,40 @@ def internal_error(error):
     return jsonify({'error': 'Internal server error'}), 500
 
 
+# WSGI application entry point
+# This is used by WSGI servers like Gunicorn or uWSGI
+application = app
+
+
 if __name__ == '__main__':
+    # Get environment and configuration
+    FLASK_ENV = os.environ.get('FLASK_ENV', 'local')
+    FLASK_HOST = os.environ.get('FLASK_HOST', '127.0.0.1')
+    FLASK_PORT = int(os.environ.get('FLASK_PORT', 5000))
+    FLASK_DEBUG = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'
+    
     print('=' * 60)
     print('🚀 Prophet Prediction API Server')
     print('=' * 60)
-    print(f'Environment: Development')
+    print(f'Environment: {FLASK_ENV}')
     print(f'Database: {DB_CONFIG["database"]}')
     print(f'Models Directory: {MODELS_DIR}')
     print(f'Available Kecamatans: {", ".join(KECAMATANS)}')
     print('=' * 60)
-    print('Starting server on http://127.0.0.1:5000')
-    print('Press CTRL+C to stop')
-    print('=' * 60)
     
+    if FLASK_ENV == 'production':
+        print('⚠️  PRODUCTION MODE')
+        print('⚠️  For production, use WSGI server like Gunicorn:')
+        print(f'   gunicorn -w 4 -b {FLASK_HOST}:{FLASK_PORT} app:application')
+        print('=' * 60)
+    else:
+        print(f'Starting development server on http://{FLASK_HOST}:{FLASK_PORT}')
+        print('Press CTRL+C to stop')
+        print('=' * 60)
+    
+    # Run development server
     app.run(
-        host='127.0.0.1',
-        port=5000,
-        debug=True
+        host=FLASK_HOST,
+        port=FLASK_PORT,
+        debug=FLASK_DEBUG
     )
