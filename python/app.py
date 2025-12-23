@@ -150,11 +150,41 @@ def load_prophet_model(kecamatan):
             logger.error(f"Model file is not readable: {model_path}")
             return None, f"Model file permission denied: {model_filename}"
         
-        # Try to load model
+        # Log Python version
+        import sys
+        python_version = sys.version
+        logger.info(f"Python version: {python_version}")
+        
+        # Try to load model - handle pickle protocol issues
         logger.info(f"Attempting to load model: {model_filename}")
-        model = joblib.load(model_path)
-        logger.info(f"Model loaded successfully: {model_filename}")
-        return model, None
+        
+        try:
+            # Try normal load first
+            model = joblib.load(model_path)
+            logger.info(f"Model loaded successfully with default protocol: {model_filename}")
+            return model, None
+        except (KeyError, ValueError) as protocol_error:
+            # KeyError 118 or similar = pickle protocol mismatch
+            logger.warning(f"Protocol error ({type(protocol_error).__name__}), trying alternative load methods...")
+            
+            # Try loading with pickle directly with different protocols
+            import pickle
+            
+            # Try protocol 4 (Python 3.4+)
+            try:
+                with open(model_path, 'rb') as f:
+                    model = pickle.load(f)
+                logger.info(f"Model loaded successfully with pickle.load: {model_filename}")
+                return model, None
+            except Exception as pickle_error:
+                logger.error(f"Pickle load failed: {type(pickle_error).__name__} - {str(pickle_error)}")
+                
+                # Return detailed error
+                return None, (f"Model pickle protocol incompatible. "
+                            f"Python {sys.version_info.major}.{sys.version_info.minor} cannot load this model. "
+                            f"Original error: {type(protocol_error).__name__} - {str(protocol_error)}. "
+                            f"Solution: Re-save model with protocol=4 using fix_model_protocol.py")
+        
     except Exception as e:
         error_type = type(e).__name__
         error_msg = str(e)
