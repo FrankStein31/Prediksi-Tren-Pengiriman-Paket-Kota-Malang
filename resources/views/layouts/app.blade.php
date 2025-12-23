@@ -146,7 +146,7 @@
         <div class="container mx-auto px-6 py-6">
             <div class="flex flex-col md:flex-row justify-between items-center">
                 <div class="text-gray-600 text-sm mb-4 md:mb-0">
-                    <i class="fas fa-copyright"></i> 2025 Prediksi Pengiriman Paket - Kota Malang
+                    <i class="fas fa-copyright"></i> 2025 Prediksi Pengiriman Paket - PT. Pos Indonesia Kota Malang
                 </div>
                 <div class="flex space-x-4">
                     <a href="https://www.instagram.com/posind_malang/" target="_blank" class="text-gray-600 hover:text-pink-600" title="Instagram PT Pos Malang">
