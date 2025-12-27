@@ -358,22 +358,22 @@ const mapeChart = new Chart(ctx, {
             {
                 label: 'SARIMA',
                 data: sarimaData,
-                backgroundColor: 'rgba(255, 107, 107, 0.85)',
-                borderColor: 'rgba(255, 107, 107, 1)',
+                backgroundColor: 'rgba(255, 132, 168, 0.8)',  // Soft pink
+                borderColor: 'rgba(255, 99, 145, 1)',
                 borderWidth: 2
             },
             {
                 label: 'Prophet',
                 data: prophetData,
-                backgroundColor: 'rgba(78, 205, 196, 0.85)',
-                borderColor: 'rgba(78, 205, 196, 1)',
+                backgroundColor: 'rgba(34, 211, 238, 0.8)',  // Neon cyan/blue
+                borderColor: 'rgba(6, 182, 212, 1)',
                 borderWidth: 2
             },
             {
                 label: 'Holt-Winters (ETS)',
                 data: hwData,
-                backgroundColor: 'rgba(149, 225, 211, 0.85)',
-                borderColor: 'rgba(149, 225, 211, 1)',
+                backgroundColor: 'rgba(253, 224, 71, 0.8)',  // Soft yellow
+                borderColor: 'rgba(250, 204, 21, 1)',
                 borderWidth: 2
             }
         ]

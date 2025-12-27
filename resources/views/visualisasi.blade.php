@@ -212,10 +212,6 @@
                 <div class="w-4 h-4 bg-green-500 rounded mr-2"></div>
                 <span class="text-gray-700">Prediksi (Forecast)</span>
             </div>
-            <div class="flex items-center">
-                <div class="w-4 h-4 bg-green-200 rounded mr-2"></div>
-                <span class="text-gray-700">Confidence Interval</span>
-            </div>
         </div>
     </div>
 
@@ -433,10 +429,6 @@ function displayChart(data) {
     const lastHistoricalValue = historicalData[historicalData.length - 1];
     const forecastData = [...Array(data.historical.length - 1).fill(null), lastHistoricalValue, ...data.forecast.map(d => d.predicted)];
     
-    // Confidence interval
-    const lowerBound = [...Array(data.historical.length - 1).fill(null), lastHistoricalValue, ...data.forecast.map(d => d.lower_bound)];
-    const upperBound = [...Array(data.historical.length - 1).fill(null), lastHistoricalValue, ...data.forecast.map(d => d.upper_bound)];
-    
     // Destroy existing chart
     if (predictionChart) {
         predictionChart.destroy();
@@ -474,28 +466,6 @@ function displayChart(data) {
                     pointBorderWidth: 2,
                     tension: 0.4,
                     fill: false
-                },
-                {
-                    label: 'Upper Bound',
-                    data: upperBound,
-                    borderColor: 'rgba(34, 197, 94, 0.2)',
-                    backgroundColor: 'rgba(34, 197, 94, 0.15)',
-                    borderWidth: 1,
-                    fill: '+1',
-                    pointRadius: 0,
-                    tension: 0.4,
-                    borderDash: [2, 2]
-                },
-                {
-                    label: 'Lower Bound',
-                    data: lowerBound,
-                    borderColor: 'rgba(34, 197, 94, 0.2)',
-                    backgroundColor: 'rgba(34, 197, 94, 0.15)',
-                    borderWidth: 1,
-                    fill: false,
-                    pointRadius: 0,
-                    tension: 0.4,
-                    borderDash: [2, 2]
                 }
             ]
         },
@@ -516,10 +486,6 @@ function displayChart(data) {
                         font: {
                             size: 13,
                             weight: '500'
-                        },
-                        filter: function(item, chart) {
-                            // Hide confidence interval from legend
-                            return !item.text.includes('Bound');
                         }
                     }
                 },
@@ -540,7 +506,7 @@ function displayChart(data) {
                         },
                         label: function(context) {
                             let label = context.dataset.label || '';
-                            if (label && !label.includes('Bound')) {
+                            if (label) {
                                 label += ': ';
                                 if (context.parsed.y !== null) {
                                     label += context.parsed.y.toLocaleString('id-ID') + ' paket';
@@ -548,25 +514,6 @@ function displayChart(data) {
                                 return label;
                             }
                             return null;
-                        },
-                        afterBody: function(context) {
-                            const index = context[0].dataIndex;
-                            const datasets = context[0].chart.data.datasets;
-                            
-                            // Show confidence interval for forecast points
-                            if (index >= data.historical.length) {
-                                const upper = datasets.find(d => d.label === 'Upper Bound').data[index];
-                                const lower = datasets.find(d => d.label === 'Lower Bound').data[index];
-                                
-                                if (upper !== null && lower !== null) {
-                                    return [
-                                        '',
-                                        `Confidence Interval:`,
-                                        `${lower.toLocaleString('id-ID')} - ${upper.toLocaleString('id-ID')} paket`
-                                    ];
-                                }
-                            }
-                            return [];
                         }
                     }
                 }

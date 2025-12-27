@@ -6,6 +6,9 @@
     <title>@yield('title', 'Prediksi Pengiriman Paket')</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="https://images.seeklogo.com/logo-png/11/1/pt-pos-indonesia-logo-png_seeklogo-113502.png">
+    
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
