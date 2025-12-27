@@ -97,6 +97,12 @@
                         <i class="fas fa-chart-line"></i>
                         <span>Visualisasi</span>
                     </a>
+
+                    <a href="{{ route('model.explanation') }}" 
+                       class="nav-link px-4 py-2 rounded-lg text-gray-700 font-medium flex items-center space-x-2 {{ request()->routeIs('model.explanation') ? 'nav-link-active' : '' }}">
+                        <i class="fas fa-chart-area"></i>
+                        <span>Analisis Model</span>
+                    </a>
                     
                     <!-- <a href="{{ route('upload') }}" 
                        class="nav-link px-4 py-2 rounded-lg text-gray-700 font-medium flex items-center space-x-2 {{ request()->routeIs('upload') ? 'nav-link-active' : '' }}">
@@ -128,9 +134,9 @@
                     <i class="fas fa-chart-line mr-2"></i> Visualisasi
                 </a>
                 
-                <a href="{{ route('upload') }}" 
-                   class="block px-4 py-3 text-gray-700 hover:bg-blue-50 rounded-lg {{ request()->routeIs('upload') ? 'bg-blue-50 text-blue-600 font-semibold' : '' }}">
-                    <i class="fas fa-upload mr-2"></i> Upload Data
+                <a href="{{ route('model.explanation') }}" 
+                   class="block px-4 py-3 text-gray-700 hover:bg-blue-50 rounded-lg {{ request()->routeIs('model.explanation') ? 'bg-blue-50 text-blue-600 font-semibold' : '' }}">
+                    <i class="fas fa-chart-area mr-2"></i> Analisis Model
                 </a>
             </div>
         </div>

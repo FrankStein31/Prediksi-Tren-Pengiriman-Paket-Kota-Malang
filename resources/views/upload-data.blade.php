@@ -153,6 +153,12 @@
         </div>
     </div>
 
+    <div>
+        <a href="{{ route('data.pengiriman') }}" class="inline-flex items-center text-gray-600 hover:text-gray-900 transition">
+            <i class="fas fa-arrow-left mr-2"></i>Kembali ke Data Pengiriman
+        </a>
+    </div>
+
     <!-- Upload Section -->
     <div class="bg-white rounded-xl shadow-lg p-6">
         <div class="mb-6">
