@@ -600,9 +600,6 @@ function displayForecastTable(forecastData, weeksCount) {
             <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
                 <i class="fas fa-exchange-alt mr-2"></i>Selisih
             </th>
-            <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
-                <i class="fas fa-percent mr-2"></i>Akurasi
-            </th>
         `;
     }
     
@@ -660,10 +657,16 @@ function displayForecastTable(forecastData, weeksCount) {
         // Add actual data columns if available
         if (hasActualData) {
             if (item.actual !== undefined) {
-                const difference = item.difference || 0;
+                // Selisih = Prediksi - Aktual (prediksi sebagai patokan)
+                // Positif = prediksi lebih tinggi dari aktual
+                // Negatif = prediksi lebih rendah dari aktual
+                const difference = item.predicted - item.actual;
                 const accuracy = item.accuracy_percent || 0;
                 const diffClass = difference >= 0 ? 'text-green-600' : 'text-red-600';
                 const diffIcon = difference >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+                const diffText = difference >= 0 ? 
+                    `+${difference.toLocaleString('id-ID')}` : 
+                    difference.toLocaleString('id-ID');
                 
                 rowHTML += `
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-blue-700">
@@ -672,19 +675,11 @@ function displayForecastTable(forecastData, weeksCount) {
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold ${diffClass}">
                         <i class="fas ${diffIcon} mr-1"></i>
-                        ${Math.abs(difference).toLocaleString('id-ID')}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
-                        <span class="px-2 py-1 ${accuracy >= 90 ? 'bg-green-100 text-green-800' : accuracy >= 80 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'} rounded-full text-xs font-bold">
-                            ${accuracy.toFixed(1)}%
-                        </span>
+                        ${diffText}
                     </td>
                 `;
             } else {
                 rowHTML += `
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-400 italic">
-                        -
-                    </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-400 italic">
                         -
                     </td>
