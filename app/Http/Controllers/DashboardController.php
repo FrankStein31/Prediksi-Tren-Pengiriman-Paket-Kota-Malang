@@ -22,7 +22,7 @@ class DashboardController extends Controller
         $totalKecamatan = 5;
         
         // Calculate model accuracy (Prophet MAPE)
-        $modelAccuracy = 100-9.68; // Average MAPE from model comparison
+        $modelAccuracy = /* 100- */ 9.68; // Average MAPE from model comparison
         
         // Get kecamatan statistics (total paket per kecamatan)
         $kecamatanStats = WeeklyShipmentData::select('kecamatan', DB::raw('SUM(total_paket) as total'))

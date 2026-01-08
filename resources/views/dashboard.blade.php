@@ -63,7 +63,7 @@
                     <p class="text-gray-500 text-sm font-medium mb-1">Model Prediksi</p>
                     <h3 class="text-2xl font-bold text-gray-800">Prophet</h3>
                     <p class="text-green-500 text-sm mt-2">
-                        <i class="fas fa-check-circle mr-1"></i>Akurasi : {{ number_format($modelAccuracy, 1) }}%
+                        <i class="fas fa-check-circle mr-1"></i>MAPE : {{ number_format($modelAccuracy, 1) }}%
                     </p>
                 </div>
                 <div class="bg-green-100 rounded-full p-4">
@@ -115,7 +115,7 @@
                 </a>
 
                 <!-- Action 4 -->
-                <a href="{{ route('model.explanation') }}" class="group bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-6 text-white hover:from-orange-600 hover:to-orange-700 transform hover:scale-105 transition">
+                <!-- <a href="{{ route('model.explanation') }}" class="group bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-6 text-white hover:from-orange-600 hover:to-orange-700 transform hover:scale-105 transition">
                     <i class="fas fa-chart-line text-4xl mb-3"></i>
                     <h3 class="text-xl font-bold mb-2">Analisis Model</h3>
                     <p class="text-orange-100 text-sm">Perbandingan & pemilihan model Prophet</p>
@@ -123,7 +123,7 @@
                         <span>Lihat Analisis</span>
                         <i class="fas fa-arrow-right ml-2 group-hover:translate-x-2 transition"></i>
                     </div>
-                </a>
+                </a> -->
             </div>
         </div>
 

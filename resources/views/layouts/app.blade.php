@@ -101,11 +101,11 @@
                         <span>Visualisasi</span>
                     </a>
 
-                    <a href="{{ route('model.explanation') }}" 
+                    <!-- <a href="{{ route('model.explanation') }}" 
                        class="nav-link px-4 py-2 rounded-lg text-gray-700 font-medium flex items-center space-x-2 {{ request()->routeIs('model.explanation') ? 'nav-link-active' : '' }}">
                         <i class="fas fa-chart-area"></i>
                         <span>Analisis Model</span>
-                    </a>
+                    </a> -->
                     
                     <!-- <a href="{{ route('upload') }}" 
                        class="nav-link px-4 py-2 rounded-lg text-gray-700 font-medium flex items-center space-x-2 {{ request()->routeIs('upload') ? 'nav-link-active' : '' }}">
