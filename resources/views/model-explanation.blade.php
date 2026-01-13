@@ -275,6 +275,173 @@
         </p>
     </div>
 
+    <!-- Actual vs Predicted Visualization -->
+    <div class="bg-white rounded-xl shadow-lg p-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6">
+            <i class="fas fa-chart-line mr-2 text-orange-600"></i>Visualisasi Data Aktual vs Prediksi
+        </h2>
+        
+        <!-- Kecamatan Selector -->
+        <div class="mb-6">
+            <label for="kecamatanSelect" class="block text-sm font-medium text-gray-700 mb-2">
+                Pilih Kecamatan:
+            </label>
+            <select id="kecamatanSelect" onchange="updatePredictionChart()" 
+                    class="mt-1 block w-full md:w-1/2 rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 px-4 py-2 border">
+                <option value="">-- Pilih Kecamatan --</option>
+            </select>
+        </div>
+
+        <!-- Chart Canvas -->
+        <div class="mb-4 relative">
+            <canvas id="predictionComparisonChart" style="max-height: 500px;"></canvas>
+            
+            <!-- Placeholder Message (shown when no kecamatan selected) -->
+            <div id="chartPlaceholder" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border-2 border-dashed border-gray-300">
+                <div class="text-center p-8">
+                    <div class="mb-4">
+                        <i class="fas fa-chart-line text-6xl text-gray-400"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2">
+                        Pilih Kecamatan untuk Melihat Visualisasi
+                    </h3>
+                    <p class="text-gray-500 mb-4">
+                        Grafik perbandingan data aktual dengan prediksi dari ketiga model akan ditampilkan di sini
+                    </p>
+                    <div class="flex items-center justify-center space-x-2 text-sm text-gray-600">
+                        <i class="fas fa-arrow-up text-orange-500"></i>
+                        <span>Gunakan dropdown di atas untuk memilih kecamatan</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metrics Info -->
+        <div id="metricsInfo" class="mt-6 hidden">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Metrik Evaluasi:</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- SARIMA Metrics -->
+                <div class="bg-red-50 rounded-lg p-4 border border-red-200">
+                    <h4 class="font-semibold text-red-700 mb-2 flex items-center">
+                        <div class="w-4 h-4 bg-red-500 rounded mr-2"></div>
+                        SARIMA
+                    </h4>
+                    <div class="space-y-2 text-sm text-gray-700">
+                        <div class="flex justify-between">
+                            <span>MAPE:</span>
+                            <span id="sarima-mape" class="font-semibold">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>MAE:</span>
+                            <span id="sarima-mae" class="font-semibold">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>RMSE:</span>
+                            <span id="sarima-rmse" class="font-semibold">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Prophet Metrics -->
+                <div class="bg-green-50 rounded-lg p-4 border border-green-200">
+                    <h4 class="font-semibold text-green-700 mb-2 flex items-center">
+                        <div class="w-4 h-4 bg-green-500 rounded mr-2"></div>
+                        Prophet
+                    </h4>
+                    <div class="space-y-2 text-sm text-gray-700">
+                        <div class="flex justify-between">
+                            <span>MAPE:</span>
+                            <span id="prophet-mape" class="font-semibold">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>MAE:</span>
+                            <span id="prophet-mae" class="font-semibold">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>RMSE:</span>
+                            <span id="prophet-rmse" class="font-semibold">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Holt-Winters Metrics -->
+                <div class="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+                    <h4 class="font-semibold text-yellow-700 mb-2 flex items-center">
+                        <div class="w-4 h-4 bg-yellow-400 rounded mr-2"></div>
+                        Holt-Winters
+                    </h4>
+                    <div class="space-y-2 text-sm text-gray-700">
+                        <div class="flex justify-between">
+                            <span>MAPE:</span>
+                            <span id="hw-mape" class="font-semibold">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>MAE:</span>
+                            <span id="hw-mae" class="font-semibold">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>RMSE:</span>
+                            <span id="hw-rmse" class="font-semibold">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Best Model Indicator -->
+            <div id="bestModelBadge" class="mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border-l-4 border-green-500">
+                <p class="text-sm text-gray-700">
+                    <i class="fas fa-trophy text-green-600 mr-2"></i>
+                    <strong>Model Terbaik untuk kecamatan ini:</strong> 
+                    <span id="bestModelName" class="font-bold text-green-700">-</span>
+                </p>
+            </div>
+        </div>
+
+        <!-- Metrics Placeholder (shown when no kecamatan selected) -->
+        <div id="metricsPlaceholder" class="mt-6">
+            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
+                <div class="flex items-start space-x-4">
+                    <div class="flex-shrink-0">
+                        <div class="bg-blue-100 rounded-full p-3">
+                            <i class="fas fa-info-circle text-blue-600 text-2xl"></i>
+                        </div>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-2">
+                            Informasi Visualisasi
+                        </h3>
+                        <p class="text-gray-700 mb-3">
+                            Setelah memilih kecamatan, Anda akan melihat:
+                        </p>
+                        <ul class="space-y-2 text-sm text-gray-600">
+                            <li class="flex items-start">
+                                <i class="fas fa-check-circle text-green-500 mr-2 mt-1"></i>
+                                <span><strong>Grafik Line Chart</strong> yang membandingkan data aktual dengan prediksi dari ketiga model</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-check-circle text-green-500 mr-2 mt-1"></i>
+                                <span><strong>Metrik Evaluasi</strong> lengkap (MAPE, MAE, RMSE) untuk setiap model</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-check-circle text-green-500 mr-2 mt-1"></i>
+                                <span><strong>Indikator Model Terbaik</strong> untuk kecamatan yang dipilih</span>
+                            </li>
+                        </ul>
+                        <div class="mt-4 flex items-center space-x-2 text-sm font-medium text-blue-700">
+                            <i class="fas fa-lightbulb"></i>
+                            <span>Tip: Pilih kecamatan dari dropdown untuk memulai analisis</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <p class="text-sm text-gray-600 mt-4 text-center italic">
+            <i class="fas fa-info-circle mr-1"></i>
+            Perbandingan visualisasi nilai aktual dengan prediksi dari ketiga model (SARIMA, Prophet, Holt-Winters)
+        </p>
+    </div>
+
     <!-- Conclusion -->
     <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl shadow-lg p-8 border-l-4 border-green-500">
         <h2 class="text-2xl font-bold text-gray-800 mb-4">
@@ -318,6 +485,34 @@
 
 <!-- Chart.js Library -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+    /* Chart placeholder styling */
+    #chartPlaceholder {
+        min-height: 400px;
+        animation: fadeIn 0.5s ease-in-out;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Pulse animation for icon */
+    #chartPlaceholder i {
+        animation: pulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 0.6; }
+        50% { transform: scale(1.05); opacity: 1; }
+    }
+    
+    /* Smooth transitions */
+    #metricsInfo, #metricsPlaceholder {
+        transition: all 0.3s ease-in-out;
+    }
+</style>
 
 <script>
 function switchTab(tab) {
@@ -468,5 +663,212 @@ const mapeChart = new Chart(ctx, {
         }
     }]
 });
+
+// Prediction Comparison Chart
+let predictionChart = null;
+
+// Initialize placeholder visibility
+document.addEventListener('DOMContentLoaded', function() {
+    // Show placeholders initially
+    document.getElementById('chartPlaceholder').classList.remove('hidden');
+    document.getElementById('metricsPlaceholder').classList.remove('hidden');
+    document.getElementById('metricsInfo').classList.add('hidden');
+});
+
+// Load Prediction Comparison Data
+fetch('/data/predictions_comparison.json')
+    .then(response => response.json())
+    .then(data => {
+        console.log('Prediction data loaded:', Object.keys(data));
+        window.predictionData = data;
+        
+        // Populate kecamatan dropdown
+        const select = document.getElementById('kecamatanSelect');
+        Object.keys(data).forEach(kecamatan => {
+            const option = document.createElement('option');
+            option.value = kecamatan;
+            option.textContent = kecamatan;
+            select.appendChild(option);
+        });
+    })
+    .catch(error => console.error('Error loading prediction data:', error));
+
+function updatePredictionChart() {
+    const kecamatan = document.getElementById('kecamatanSelect').value;
+    
+    if (!kecamatan || !window.predictionData) {
+        // Show placeholders, hide chart and metrics
+        document.getElementById('chartPlaceholder').classList.remove('hidden');
+        document.getElementById('metricsInfo').classList.add('hidden');
+        document.getElementById('metricsPlaceholder').classList.remove('hidden');
+        if (predictionChart) {
+            predictionChart.destroy();
+            predictionChart = null;
+        }
+        return;
+    }
+    
+    // Hide placeholders, show chart and metrics
+    document.getElementById('chartPlaceholder').classList.add('hidden');
+    document.getElementById('metricsInfo').classList.remove('hidden');
+    document.getElementById('metricsPlaceholder').classList.add('hidden');
+    
+    const data = window.predictionData[kecamatan];
+    
+    // Show metrics info
+    document.getElementById('metricsInfo').classList.remove('hidden');
+    
+    // Update metrics
+    document.getElementById('sarima-mape').textContent = data.predictions.sarima.mape.toFixed(2) + '%';
+    document.getElementById('sarima-mae').textContent = data.predictions.sarima.mae.toFixed(2);
+    document.getElementById('sarima-rmse').textContent = data.predictions.sarima.rmse.toFixed(2);
+    
+    document.getElementById('prophet-mape').textContent = data.predictions.prophet.mape.toFixed(2) + '%';
+    document.getElementById('prophet-mae').textContent = data.predictions.prophet.mae.toFixed(2);
+    document.getElementById('prophet-rmse').textContent = data.predictions.prophet.rmse.toFixed(2);
+    
+    document.getElementById('hw-mape').textContent = data.predictions.holtwinters.mape.toFixed(2) + '%';
+    document.getElementById('hw-mae').textContent = data.predictions.holtwinters.mae.toFixed(2);
+    document.getElementById('hw-rmse').textContent = data.predictions.holtwinters.rmse.toFixed(2);
+    
+    // Update best model badge
+    document.getElementById('bestModelName').textContent = data.best_model;
+    
+    // Destroy existing chart if any
+    if (predictionChart) {
+        predictionChart.destroy();
+    }
+    
+    // Create new chart
+    const ctx = document.getElementById('predictionComparisonChart').getContext('2d');
+    
+    predictionChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.dates,
+            datasets: [
+                {
+                    label: 'Data Aktual',
+                    data: data.actual,
+                    borderColor: 'rgb(0, 0, 0)',
+                    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+                    borderWidth: 3,
+                    pointRadius: 0,
+                    tension: 0.1
+                },
+                {
+                    label: 'SARIMA',
+                    data: data.predictions.sarima.values,
+                    borderColor: 'rgb(239, 68, 68)',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    tension: 0.1
+                },
+                {
+                    label: 'Prophet',
+                    data: data.predictions.prophet.values,
+                    borderColor: 'rgb(34, 197, 94)',
+                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    tension: 0.1
+                },
+                {
+                    label: 'Holt-Winters',
+                    data: data.predictions.holtwinters.values,
+                    borderColor: 'rgb(234, 179, 8)',
+                    backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    tension: 0.1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Perbandingan Data Aktual vs Prediksi - ' + kecamatan,
+                    font: {
+                        size: 16,
+                        weight: 'bold'
+                    },
+                    padding: {
+                        top: 10,
+                        bottom: 20
+                    }
+                },
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        font: {
+                            size: 12
+                        },
+                        padding: 15,
+                        usePointStyle: true
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.parsed.y.toFixed(0) + ' paket';
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Jumlah Paket',
+                        font: {
+                            size: 14,
+                            weight: 'bold'
+                        }
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return value.toLocaleString();
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Tanggal',
+                        font: {
+                            size: 14,
+                            weight: 'bold'
+                        }
+                    },
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 45,
+                        autoSkip: true,
+                        maxTicksLimit: 10
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+}
 </script>
 @endsection
