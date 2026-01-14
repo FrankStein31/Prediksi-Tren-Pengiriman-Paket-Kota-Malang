@@ -33,16 +33,26 @@ class VisualisasiController extends Controller
         $request->validate([
             'kecamatan' => 'required|string|in:BLIMBING,KEDUNGKANDANG,KLOJEN,LOWOKWARU,SUKUN',
             'weeks_historical' => 'integer|min:4|max:52',  // Max 52 weeks
-            'weeks_forecast' => 'integer|min:1|max:8',     // Max 8 weeks
+            'weeks_forecast' => 'integer|min:1|max:12',    // Max 12 weeks (updated from 8)
             'date_mode' => 'required|string|in:realtime,custom',
-            'custom_date' => 'nullable|date'
+            'custom_date' => 'nullable|date',
+            'courier_capacity_normal_min' => 'nullable|integer|min:70|max:1400',
+            'courier_capacity_normal_max' => 'nullable|integer|min:70|max:1400',
+            'courier_capacity_holiday_min' => 'nullable|integer|min:70|max:1750',
+            'courier_capacity_holiday_max' => 'nullable|integer|min:70|max:1750'
         ]);
         
         $kecamatan = $request->input('kecamatan');
-        $weeksHistorical = $request->input('weeks_historical', 52);
+        $weeksHistorical = $request->input('weeks_historical', 4);  // Default 4 weeks (updated from 52)
         $weeksForecast = $request->input('weeks_forecast', 4);
         $dateMode = $request->input('date_mode', 'realtime');
         $customDate = $request->input('custom_date');
+        
+        // Courier capacity settings (paket per minggu per kurir)
+        $courierNormalMin = $request->input('courier_capacity_normal_min', 455);   // 65 paket/hari * 7 hari
+        $courierNormalMax = $request->input('courier_capacity_normal_max', 560);   // 80 paket/hari * 7 hari
+        $courierHolidayMin = $request->input('courier_capacity_holiday_min', 700); // 100 paket/hari * 7 hari
+        $courierHolidayMax = $request->input('courier_capacity_holiday_max', 840); // 120 paket/hari * 7 hari
         
         try {
             // Check Flask API health first
@@ -219,6 +229,28 @@ class VisualisasiController extends Controller
                             $forecastItem['holiday'] = $holiday;
                             $forecastItem['is_holiday'] = $holiday !== '-';
                             
+                            // Calculate courier recommendation
+                            $predicted = $forecastItem['predicted'] ?? 0;
+                            
+                            if ($forecastItem['is_holiday']) {
+                                // Minggu dengan hari libur - gunakan kapasitas holiday
+                                $courierMin = (int) ceil($predicted / $courierHolidayMax);
+                                $courierOptimal = (int) ceil($predicted / (($courierHolidayMin + $courierHolidayMax) / 2));
+                                $courierMax = (int) ceil($predicted / $courierHolidayMin);
+                            } else {
+                                // Minggu normal - gunakan kapasitas normal
+                                $courierMin = (int) ceil($predicted / $courierNormalMax);
+                                $courierOptimal = (int) ceil($predicted / (($courierNormalMin + $courierNormalMax) / 2));
+                                $courierMax = (int) ceil($predicted / $courierNormalMin);
+                            }
+                            
+                            $forecastItem['courier_recommendation'] = [
+                                'minimum' => $courierMin,
+                                'optimal' => $courierOptimal,
+                                'maximum' => $courierMax,
+                                'is_holiday_week' => $forecastItem['is_holiday']
+                            ];
+                            
                             \Log::info('Date: ' . $forecastItem['date'] . ' | Week: ' . $weekStart->format('Y-m-d') . ' to ' . $weekEnd->format('Y-m-d') . ' | Holiday: ' . $holiday);
                         } catch (\Exception $e) {
                             \Log::error('Error getting holiday for ' . $forecastItem['date'], [
@@ -226,6 +258,12 @@ class VisualisasiController extends Controller
                             ]);
                             $forecastItem['holiday'] = '-';
                             $forecastItem['is_holiday'] = false;
+                            $forecastItem['courier_recommendation'] = [
+                                'minimum' => 0,
+                                'optimal' => 0,
+                                'maximum' => 0,
+                                'is_holiday_week' => false
+                            ];
                         }
                     }
                 }
@@ -235,6 +273,20 @@ class VisualisasiController extends Controller
                     'first_item' => $data['forecast'][0] ?? null
                 ]);
             }
+            
+            // Add courier settings to response
+            $data['courier_settings'] = [
+                'normal' => [
+                    'min' => $courierNormalMin,
+                    'max' => $courierNormalMax,
+                    'optimal' => (int) (($courierNormalMin + $courierNormalMax) / 2)
+                ],
+                'holiday' => [
+                    'min' => $courierHolidayMin,
+                    'max' => $courierHolidayMax,
+                    'optimal' => (int) (($courierHolidayMin + $courierHolidayMax) / 2)
+                ]
+            ];
             
             return response()->json($data);
             

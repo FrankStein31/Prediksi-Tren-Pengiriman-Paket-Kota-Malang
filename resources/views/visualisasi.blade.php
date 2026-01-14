@@ -13,7 +13,7 @@
                 </h1>
                 <p class="text-purple-100 text-lg">Analisis dan Prediksi Tren Pengiriman Paket dengan Model Prophet</p>
                 <p class="text-purple-200 text-sm mt-2">
-                    <i class="far fa-calendar-alt mr-2"></i>Fleksibel: 4-52 minggu historis + 1-8 minggu prediksi | 
+                    <i class="far fa-calendar-alt mr-2"></i>Fleksibel: 4-52 minggu historis + 1-12 minggu prediksi | 
                     <i class="fas fa-infinity mr-2"></i>Mendukung prediksi masa depan
                 </p>
             </div>
@@ -82,19 +82,17 @@
                         Anda bisa pilih <strong>tanggal masa depan</strong> untuk melihat prediksi jangka panjang.
                     </p>
                 </div>
-            </div>
-            
-            <!-- Right Column -->
-            <div class="space-y-4">
+                
+                <!-- Weeks Settings -->
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">
                             <i class="fas fa-history mr-1 text-blue-600"></i>
                             Minggu Historis
                         </label>
-                        <input type="number" id="weeks-historical" value="52" min="4" max="52" 
+                        <input type="number" id="weeks-historical" value="4" min="4" max="52" 
                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
-                        <p class="mt-1 text-xs text-gray-500">Max: 52 minggu</p>
+                        <p class="mt-1 text-xs text-gray-500">Default: 4 minggu | Max: 52 minggu</p>
                     </div>
                     
                     <div>
@@ -102,12 +100,13 @@
                             <i class="fas fa-forward mr-1 text-green-600"></i>
                             Minggu Prediksi
                         </label>
-                        <input type="number" id="weeks-forecast" value="4" min="1" max="8" 
+                        <input type="number" id="weeks-forecast" value="4" min="1" max="12" 
                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
-                        <p class="mt-1 text-xs text-gray-500">Max: 8 minggu</p>
+                        <p class="mt-1 text-xs text-gray-500">Default: 4 minggu | Max: 12 minggu</p>
                     </div>
                 </div>
                 
+                <!-- Range Data Preview -->
                 <div class="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-4 border border-purple-200">
                     <div class="flex items-start gap-3">
                         <i class="fas fa-chart-line text-purple-600 text-xl mt-1"></i>
@@ -116,7 +115,7 @@
                             <div class="text-xs text-gray-600 space-y-1">
                                 <div class="flex items-center gap-2">
                                     <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
-                                    <span id="preview-historical">52 minggu historis</span>
+                                    <span id="preview-historical">4 minggu historis</span>
                                 </div>
                                 <div class="flex items-center gap-2">
                                     <span class="w-2 h-2 bg-green-500 rounded-full"></span>
@@ -124,19 +123,108 @@
                                 </div>
                                 <div class="flex items-center gap-2 font-semibold text-purple-700">
                                     <i class="fas fa-calendar-week"></i>
-                                    <span id="preview-total">Total: 56 minggu</span>
+                                    <span id="preview-total">Total: 8 minggu</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
+            
+            <!-- Right Column -->
+            <div class="space-y-4">
                 
-                <button onclick="loadPrediction()" 
-                        class="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-indigo-700 transition shadow-lg hover:shadow-xl">
-                    <i class="fas fa-chart-line mr-2"></i>Tampilkan Grafik Prediksi
-                </button>
+                <!-- Courier Capacity Settings -->
+                <div class="border border-indigo-200 rounded-lg p-4 bg-indigo-50">
+                    <label class="text-sm font-semibold text-gray-800 flex items-center mb-3">
+                        <i class="fas fa-users-cog mr-2 text-indigo-600"></i>
+                        Pengaturan Kapasitas Kurir
+                    </label>
+                    
+                    <!-- Unit Toggle -->
+                    <div class="mb-3 flex items-center justify-center gap-2 bg-white rounded-lg p-2">
+                        <button type="button" id="unit-daily-btn" onclick="switchUnit('daily')" 
+                                class="flex-1 px-3 py-2 text-xs font-medium rounded-md transition-colors bg-indigo-600 text-white">
+                            <i class="fas fa-sun mr-1"></i>Per Hari
+                        </button>
+                        <button type="button" id="unit-weekly-btn" onclick="switchUnit('weekly')" 
+                                class="flex-1 px-3 py-2 text-xs font-medium rounded-md transition-colors text-gray-700 hover:bg-gray-100">
+                            <i class="fas fa-calendar-week mr-1"></i>Per Minggu
+                        </button>
+                    </div>
+                    
+                    <input type="hidden" id="capacity-unit" value="daily">
+                    
+                    <!-- Normal Capacity -->
+                    <div class="mb-3 bg-white rounded-lg p-3">
+                        <label class="block text-xs font-medium text-gray-700 mb-2">
+                            <i class="fas fa-calendar mr-1 text-gray-600"></i>
+                            Kapasitas Hari Normal
+                        </label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Min <span id="unit-label-normal-min">(paket/hari)</span></label>
+                                <input type="number" id="courier-capacity-normal-min" value="65" min="10" max="200" 
+                                       class="w-full text-sm rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                       onchange="updateCapacityPreview()">
+                                <p class="mt-0.5 text-xs text-gray-400">Min: 10 paket/hari (70/minggu)</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Max <span id="unit-label-normal-max">(paket/hari)</span></label>
+                                <input type="number" id="courier-capacity-normal-max" value="80" min="10" max="200" 
+                                       class="w-full text-sm rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                       onchange="updateCapacityPreview()">
+                                <p class="mt-0.5 text-xs text-gray-400">Min: 10 paket/hari (70/minggu)</p>
+                            </div>
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500">
+                            <i class="fas fa-arrow-right mr-1"></i>
+                            Per minggu: <strong id="preview-normal-range">455-560 paket</strong>
+                        </p>
+                    </div>
+                    
+                    <!-- Holiday Capacity -->
+                    <div class="bg-white rounded-lg p-3">
+                        <label class="block text-xs font-medium text-gray-700 mb-2">
+                            <i class="fas fa-calendar-check mr-1 text-red-600"></i>
+                            Kapasitas Hari Libur
+                        </label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Min <span id="unit-label-holiday-min">(paket/hari)</span></label>
+                                <input type="number" id="courier-capacity-holiday-min" value="100" min="10" max="250" 
+                                       class="w-full text-sm rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                       onchange="updateCapacityPreview()">
+                                <p class="mt-0.5 text-xs text-gray-400">Min: 10 paket/hari (70/minggu)</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Max <span id="unit-label-holiday-max">(paket/hari)</span></label>
+                                <input type="number" id="courier-capacity-holiday-max" value="120" min="10" max="250" 
+                                       class="w-full text-sm rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                       onchange="updateCapacityPreview()">
+                                <p class="mt-0.5 text-xs text-gray-400">Min: 10 paket/hari (70/minggu)</p>
+                            </div>
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500">
+                            <i class="fas fa-arrow-right mr-1"></i>
+                            Per minggu: <strong id="preview-holiday-range">700-840 paket</strong>
+                        </p>
+                    </div>
+                    
+                    <button type="button" onclick="resetCourierSettings()" 
+                            class="mt-3 w-full text-xs text-gray-600 hover:text-gray-800 py-2 hover:bg-white rounded transition-colors">
+                        <i class="fas fa-undo mr-1"></i>Reset ke Default
+                    </button>
+                </div>
             </div>
         </div>
+        
+        <!-- Tampilkan Grafik Button - Full Width -->
+         <br>
+        <button onclick="loadPrediction()" 
+                class="w-full px-6 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-indigo-700 transition shadow-lg hover:shadow-xl text-lg">
+            <i class="fas fa-chart-line mr-2"></i>Tampilkan Grafik Prediksi
+        </button>
     </div>
 
     <!-- Loading Indicator -->
@@ -248,9 +336,18 @@
                     <ul class="list-disc list-inside space-y-1">
                         <li><strong>Prediksi:</strong> Nilai prediksi yang paling mungkin terjadi</li>
                         <li><strong>Hari Libur:</strong> Hari libur nasional/hari raya yang jatuh pada minggu tersebut (mempengaruhi volume pengiriman)</li>
+                        <li><strong>Rekomendasi Kurir:</strong> <span class="text-red-600 font-bold">JUMLAH TOTAL KURIR</span> yang dibutuhkan (bukan penambahan kurir)
+                            <ul class="list-circle list-inside ml-5 mt-1 text-xs">
+                                <li><strong>Cara Hitung:</strong> Total Kurir = Prediksi Paket ÷ Kapasitas per Kurir</li>
+                                <li><strong>Minimum:</strong> Kurir dengan beban MAKSIMAL (paling sedikit jumlah, beban tinggi)</li>
+                                <li><strong>Optimal (Rekomendasi):</strong> Kurir dengan beban SEIMBANG</li>
+                                <li><strong>Maximum:</strong> Kurir dengan beban MINIMAL (paling banyak jumlah, lebih safety)</li>
+                                <!-- <li>Minggu Normal: 455-560 paket/minggu/kurir</li>
+                                <li>Minggu Libur: 700-840 paket/minggu/kurir (volume lebih tinggi)</li> -->
+                            </ul>
+                        </li>
                         <li><strong>Aktual:</strong> Nilai sesungguhnya dari database (jika tersedia)</li>
-                        <li><strong>Selisih:</strong> Perbedaan antara nilai aktual dan prediksi</li>
-                        <li><strong>Akurasi:</strong> Persentase ketepatan prediksi (hijau ≥90%, kuning ≥80%, merah <80%)</li>
+                        <li><strong>Selisih:</strong> Perbedaan antara nilai prediksi dan aktual (prediksi sebagai patokan)</li>
                         <!-- <li><strong>Terendah:</strong> Batas bawah confidence interval (80%)</li>
                         <li><strong>Tertinggi:</strong> Batas atas confidence interval (80%)</li> -->
                     </ul>
@@ -288,6 +385,9 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('weeks-historical').addEventListener('input', updatePreview);
     document.getElementById('weeks-forecast').addEventListener('input', updatePreview);
     updatePreview();
+    
+    // Initialize capacity preview
+    updateCapacityPreview();
 });
 
 function toggleDateMode() {
@@ -302,16 +402,155 @@ function toggleDateMode() {
 }
 
 function updatePreview() {
-    const weeksHistorical = parseInt(document.getElementById('weeks-historical').value) || 52;
+    const weeksHistorical = parseInt(document.getElementById('weeks-historical').value) || 4;
     const weeksForecast = parseInt(document.getElementById('weeks-forecast').value) || 4;
     
     // Validate limits
     const validHistorical = Math.min(Math.max(weeksHistorical, 4), 52);
-    const validForecast = Math.min(Math.max(weeksForecast, 1), 8);
+    const validForecast = Math.min(Math.max(weeksForecast, 1), 12);
     
     document.getElementById('preview-historical').textContent = `${validHistorical} minggu historis`;
     document.getElementById('preview-forecast').textContent = `${validForecast} minggu prediksi`;
     document.getElementById('preview-total').textContent = `Total: ${validHistorical + validForecast} minggu`;
+}
+
+function switchUnit(unit) {
+    const isDaily = unit === 'daily';
+    document.getElementById('capacity-unit').value = unit;
+    
+    // Update button states
+    const dailyBtn = document.getElementById('unit-daily-btn');
+    const weeklyBtn = document.getElementById('unit-weekly-btn');
+    
+    if (isDaily) {
+        dailyBtn.className = 'flex-1 px-3 py-2 text-xs font-medium rounded-md transition-colors bg-indigo-600 text-white';
+        weeklyBtn.className = 'flex-1 px-3 py-2 text-xs font-medium rounded-md transition-colors text-gray-700 hover:bg-gray-100';
+    } else {
+        dailyBtn.className = 'flex-1 px-3 py-2 text-xs font-medium rounded-md transition-colors text-gray-700 hover:bg-gray-100';
+        weeklyBtn.className = 'flex-1 px-3 py-2 text-xs font-medium rounded-md transition-colors bg-indigo-600 text-white';
+    }
+    
+    // Update labels
+    const suffix = isDaily ? '(paket/hari)' : '(paket/minggu)';
+    document.getElementById('unit-label-normal-min').textContent = suffix;
+    document.getElementById('unit-label-normal-max').textContent = suffix;
+    document.getElementById('unit-label-holiday-min').textContent = suffix;
+    document.getElementById('unit-label-holiday-max').textContent = suffix;
+    
+    // Convert values
+    const normalMin = document.getElementById('courier-capacity-normal-min');
+    const normalMax = document.getElementById('courier-capacity-normal-max');
+    const holidayMin = document.getElementById('courier-capacity-holiday-min');
+    const holidayMax = document.getElementById('courier-capacity-holiday-max');
+    
+    if (isDaily) {
+        // Convert from weekly to daily
+        normalMin.value = Math.round(parseInt(normalMin.value) / 7);
+        normalMax.value = Math.round(parseInt(normalMax.value) / 7);
+        holidayMin.value = Math.round(parseInt(holidayMin.value) / 7);
+        holidayMax.value = Math.round(parseInt(holidayMax.value) / 7);
+        
+        // Update min/max attributes
+        normalMin.min = 10;
+        normalMin.max = 200;
+        normalMax.min = 10;
+        normalMax.max = 200;
+        holidayMin.min = 10;
+        holidayMin.max = 250;
+        holidayMax.min = 10;
+        holidayMax.max = 250;
+    } else {
+        // Convert from daily to weekly
+        normalMin.value = Math.round(parseInt(normalMin.value) * 7);
+        normalMax.value = Math.round(parseInt(normalMax.value) * 7);
+        holidayMin.value = Math.round(parseInt(holidayMin.value) * 7);
+        holidayMax.value = Math.round(parseInt(holidayMax.value) * 7);
+        
+        // Update min/max attributes
+        normalMin.min = 70;
+        normalMin.max = 1400;
+        normalMax.min = 70;
+        normalMax.max = 1400;
+        holidayMin.min = 70;
+        holidayMin.max = 1750;
+        holidayMax.min = 70;
+        holidayMax.max = 1750;
+    }
+    
+    updateCapacityPreview();
+}
+
+function updateCapacityPreview() {
+    const unit = document.getElementById('capacity-unit').value;
+    const multiplier = unit === 'daily' ? 7 : 1;
+    
+    const normalMin = parseInt(document.getElementById('courier-capacity-normal-min').value) || 0;
+    const normalMax = parseInt(document.getElementById('courier-capacity-normal-max').value) || 0;
+    const holidayMin = parseInt(document.getElementById('courier-capacity-holiday-min').value) || 0;
+    const holidayMax = parseInt(document.getElementById('courier-capacity-holiday-max').value) || 0;
+    
+    // Validate minimum threshold
+    const minThreshold = unit === 'daily' ? 10 : 70;
+    
+    // Highlight invalid inputs
+    const normalMinInput = document.getElementById('courier-capacity-normal-min');
+    const normalMaxInput = document.getElementById('courier-capacity-normal-max');
+    const holidayMinInput = document.getElementById('courier-capacity-holiday-min');
+    const holidayMaxInput = document.getElementById('courier-capacity-holiday-max');
+    
+    // Reset border colors
+    normalMinInput.style.borderColor = '';
+    normalMaxInput.style.borderColor = '';
+    holidayMinInput.style.borderColor = '';
+    holidayMaxInput.style.borderColor = '';
+    
+    // Check and highlight invalid values
+    if (normalMin < minThreshold && normalMin > 0) {
+        normalMinInput.style.borderColor = '#ef4444'; // red-500
+        normalMinInput.style.borderWidth = '2px';
+    }
+    if (normalMax < minThreshold && normalMax > 0) {
+        normalMaxInput.style.borderColor = '#ef4444';
+        normalMaxInput.style.borderWidth = '2px';
+    }
+    if (holidayMin < minThreshold && holidayMin > 0) {
+        holidayMinInput.style.borderColor = '#ef4444';
+        holidayMinInput.style.borderWidth = '2px';
+    }
+    if (holidayMax < minThreshold && holidayMax > 0) {
+        holidayMaxInput.style.borderColor = '#ef4444';
+        holidayMaxInput.style.borderWidth = '2px';
+    }
+    
+    // Calculate weekly values
+    const normalMinWeekly = normalMin * multiplier;
+    const normalMaxWeekly = normalMax * multiplier;
+    const holidayMinWeekly = holidayMin * multiplier;
+    const holidayMaxWeekly = holidayMax * multiplier;
+    
+    document.getElementById('preview-normal-range').textContent = 
+        `${normalMinWeekly}-${normalMaxWeekly} paket`;
+    document.getElementById('preview-holiday-range').textContent = 
+        `${holidayMinWeekly}-${holidayMaxWeekly} paket`;
+}
+
+function resetCourierSettings() {
+    const unit = document.getElementById('capacity-unit').value;
+    
+    if (unit === 'daily') {
+        document.getElementById('courier-capacity-normal-min').value = 65;
+        document.getElementById('courier-capacity-normal-max').value = 80;
+        document.getElementById('courier-capacity-holiday-min').value = 100;
+        document.getElementById('courier-capacity-holiday-max').value = 120;
+    } else {
+        document.getElementById('courier-capacity-normal-min').value = 455;
+        document.getElementById('courier-capacity-normal-max').value = 560;
+        document.getElementById('courier-capacity-holiday-min').value = 700;
+        document.getElementById('courier-capacity-holiday-max').value = 840;
+    }
+    
+    updateCapacityPreview();
+    alert('Pengaturan kapasitas kurir direset ke default.');
 }
 
 async function loadPrediction() {
@@ -321,6 +560,15 @@ async function loadPrediction() {
     const dateMode = document.querySelector('input[name="date-mode"]:checked').value;
     const customDate = document.getElementById('custom-date').value;
     
+    // Get capacity values
+    const unit = document.getElementById('capacity-unit').value;
+    const multiplier = unit === 'daily' ? 7 : 1;
+    
+    const normalMin = parseInt(document.getElementById('courier-capacity-normal-min').value) * multiplier;
+    const normalMax = parseInt(document.getElementById('courier-capacity-normal-max').value) * multiplier;
+    const holidayMin = parseInt(document.getElementById('courier-capacity-holiday-min').value) * multiplier;
+    const holidayMax = parseInt(document.getElementById('courier-capacity-holiday-max').value) * multiplier;
+    
     // Validation
     if (!kecamatan) {
         alert('Pilih kecamatan terlebih dahulu!');
@@ -329,17 +577,52 @@ async function loadPrediction() {
     
     // Validate ranges
     if (weeksHistorical < 4 || weeksHistorical > 52) {
-        alert('Minggu historis harus antara 4-52 minggu!');
+        alert('⚠️ Minggu historis harus antara 4-52 minggu!');
         return;
     }
     
-    if (weeksForecast < 1 || weeksForecast > 8) {
-        alert('Minggu prediksi harus antara 1-8 minggu!');
+    if (weeksForecast < 1 || weeksForecast > 12) {
+        alert('⚠️ Minggu prediksi harus antara 1-12 minggu!');
         return;
     }
     
     if (dateMode === 'custom' && !customDate) {
         alert('Pilih tanggal custom terlebih dahulu!');
+        return;
+    }
+    
+    // Validate minimum values (must be >= 70 for weekly or >= 10 for daily)
+    const minWeeklyThreshold = 70;
+    const minDailyThreshold = 10;
+    
+    if (normalMin < minWeeklyThreshold) {
+        alert(`❌ Error: Kapasitas Normal Min terlalu rendah!\n\nNilai minimum: ${minDailyThreshold} paket/hari atau ${minWeeklyThreshold} paket/minggu\nNilai Anda: ${normalMin} paket/minggu\n\nSilakan tingkatkan nilai atau gunakan default (65 paket/hari).`);
+        return;
+    }
+    
+    if (normalMax < minWeeklyThreshold) {
+        alert(`❌ Error: Kapasitas Normal Max terlalu rendah!\n\nNilai minimum: ${minDailyThreshold} paket/hari atau ${minWeeklyThreshold} paket/minggu\nNilai Anda: ${normalMax} paket/minggu\n\nSilakan tingkatkan nilai atau gunakan default (80 paket/hari).`);
+        return;
+    }
+    
+    if (holidayMin < minWeeklyThreshold) {
+        alert(`❌ Error: Kapasitas Libur Min terlalu rendah!\n\nNilai minimum: ${minDailyThreshold} paket/hari atau ${minWeeklyThreshold} paket/minggu\nNilai Anda: ${holidayMin} paket/minggu\n\nSilakan tingkatkan nilai atau gunakan default (100 paket/hari).`);
+        return;
+    }
+    
+    if (holidayMax < minWeeklyThreshold) {
+        alert(`❌ Error: Kapasitas Libur Max terlalu rendah!\n\nNilai minimum: ${minDailyThreshold} paket/hari atau ${minWeeklyThreshold} paket/minggu\nNilai Anda: ${holidayMax} paket/minggu\n\nSilakan tingkatkan nilai atau gunakan default (120 paket/hari).`);
+        return;
+    }
+    
+    // Validate courier capacity min < max
+    if (normalMin >= normalMax) {
+        alert('❌ Error: Kapasitas Normal Min harus lebih kecil dari Max!');
+        return;
+    }
+    
+    if (holidayMin >= holidayMax) {
+        alert('❌ Error: Kapasitas Libur Min harus lebih kecil dari Max!');
         return;
     }
     
@@ -357,7 +640,11 @@ async function loadPrediction() {
             kecamatan: kecamatan,
             weeks_historical: weeksHistorical,
             weeks_forecast: weeksForecast,
-            date_mode: dateMode
+            date_mode: dateMode,
+            courier_capacity_normal_min: normalMin,
+            courier_capacity_normal_max: normalMax,
+            courier_capacity_holiday_min: holidayMin,
+            courier_capacity_holiday_max: holidayMax
         };
         
         if (dateMode === 'custom') {
@@ -590,6 +877,9 @@ function displayForecastTable(forecastData, weeksCount) {
         <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
             <i class="fas fa-chart-line mr-2"></i>Prediksi
         </th>
+        <th class="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+            <i class="fas fa-users mr-2"></i>Rekomendasi Kurir
+        </th>
     `;
     
     if (hasActualData) {
@@ -651,6 +941,23 @@ function displayForecastTable(forecastData, weeksCount) {
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-green-700">
                     <i class="fas fa-chart-line mr-1"></i>
                     ${item.predicted.toLocaleString('id-ID')}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
+                    ${item.courier_recommendation ? `
+                        <div class="inline-flex items-center gap-2">
+                            <span class="px-3 py-1.5 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg font-bold text-base shadow-md">
+                                <i class="fas fa-user-tie mr-1"></i>
+                                ${item.courier_recommendation.optimal}
+                            </span>
+                            <div class="text-xs text-gray-500">
+                                <div class="font-medium">Min: ${item.courier_recommendation.minimum} | Max: ${item.courier_recommendation.maximum}</div>
+                                ${item.courier_recommendation.is_holiday_week ? 
+                                    '<div class="text-red-600 font-semibold"><i class="fas fa-calendar-check mr-1"></i>Kapasitas Libur</div>' : 
+                                    '<div class="text-gray-600">Kapasitas Normal</div>'
+                                }
+                            </div>
+                        </div>
+                    ` : `<span class="text-gray-400 italic">-</span>`}
                 </td>
         `;
         

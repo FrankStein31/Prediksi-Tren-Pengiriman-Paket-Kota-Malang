@@ -46,12 +46,12 @@ def get_db_connection():
         return None
 
 
-def load_historical_data(kecamatan, weeks_back=52, reference_date=None, is_future_date=False):
+def load_historical_data(kecamatan, weeks_back=4, reference_date=None, is_future_date=False):
     """Load historical data from database
     
     Args:
         kecamatan: Nama kecamatan
-        weeks_back: Jumlah minggu yang ingin ditampilkan
+        weeks_back: Jumlah minggu yang ingin ditampilkan (default: 4, updated from 52)
         reference_date: Tanggal referensi (default: awal minggu ini)
         is_future_date: True if reference_date is in the future
     """
@@ -291,8 +291,8 @@ def predict():
     Request JSON:
     {
         "kecamatan": "BLIMBING",
-        "weeks_historical": 52,
-        "weeks_forecast": 4,
+        "weeks_historical": 4,  // Default: 4, Max: 52
+        "weeks_forecast": 4,    // Default: 4, Max: 12 (updated from 8)
         "date_mode": "realtime",  // or "custom"
         "custom_date": "2023-10-10"  // optional, when date_mode=custom
     }
@@ -305,7 +305,7 @@ def predict():
             return jsonify({'error': 'No JSON data provided'}), 400
         
         kecamatan = data.get('kecamatan')
-        weeks_historical = data.get('weeks_historical', 52)
+        weeks_historical = data.get('weeks_historical', 4)  # Default 4 weeks (updated from 52)
         weeks_forecast = data.get('weeks_forecast', 4)
         date_mode = data.get('date_mode', 'realtime')
         custom_date = data.get('custom_date')
@@ -317,12 +317,12 @@ def predict():
         if kecamatan not in KECAMATANS:
             return jsonify({'error': f'Invalid kecamatan. Must be one of: {", ".join(KECAMATANS)}'}), 400
         
-        # Validate ranges (max 52 historical, max 8 forecast)
+        # Validate ranges (max 52 historical, max 12 forecast)
         if not (4 <= weeks_historical <= 52):
             return jsonify({'error': 'weeks_historical must be between 4 and 52'}), 400
         
-        if not (1 <= weeks_forecast <= 8):
-            return jsonify({'error': 'weeks_forecast must be between 1 and 8'}), 400
+        if not (1 <= weeks_forecast <= 12):
+            return jsonify({'error': 'weeks_forecast must be between 1 and 12'}), 400
         
         if date_mode not in ['realtime', 'custom']:
             return jsonify({'error': 'date_mode must be "realtime" or "custom"'}), 400
