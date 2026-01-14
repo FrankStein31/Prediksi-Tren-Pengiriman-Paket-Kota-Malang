@@ -166,15 +166,15 @@
                                 <label class="block text-xs text-gray-500 mb-1">Min <span id="unit-label-normal-min">(paket/hari)</span></label>
                                 <input type="number" id="courier-capacity-normal-min" value="65" min="10" max="200" 
                                        class="w-full text-sm rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                       onchange="updateCapacityPreview()">
-                                <p class="mt-0.5 text-xs text-gray-400">Min: 10 paket/hari (70/minggu)</p>
+                                       onchange="updateCapacityPreview()" oninput="updateCapacityPreview()">
+                                <p class="mt-0.5 text-xs text-gray-400">Range: 10-200 paket/hari (70-1400/minggu)</p>
                             </div>
                             <div>
                                 <label class="block text-xs text-gray-500 mb-1">Max <span id="unit-label-normal-max">(paket/hari)</span></label>
                                 <input type="number" id="courier-capacity-normal-max" value="80" min="10" max="200" 
                                        class="w-full text-sm rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                       onchange="updateCapacityPreview()">
-                                <p class="mt-0.5 text-xs text-gray-400">Min: 10 paket/hari (70/minggu)</p>
+                                       onchange="updateCapacityPreview()" oninput="updateCapacityPreview()">
+                                <p class="mt-0.5 text-xs text-gray-400">Range: 10-200 paket/hari (70-1400/minggu)</p>
                             </div>
                         </div>
                         <p class="mt-1 text-xs text-gray-500">
@@ -194,15 +194,15 @@
                                 <label class="block text-xs text-gray-500 mb-1">Min <span id="unit-label-holiday-min">(paket/hari)</span></label>
                                 <input type="number" id="courier-capacity-holiday-min" value="100" min="10" max="250" 
                                        class="w-full text-sm rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                       onchange="updateCapacityPreview()">
-                                <p class="mt-0.5 text-xs text-gray-400">Min: 10 paket/hari (70/minggu)</p>
+                                       onchange="updateCapacityPreview()" oninput="updateCapacityPreview()">
+                                <p class="mt-0.5 text-xs text-gray-400">Range: 10-250 paket/hari (70-1750/minggu)</p>
                             </div>
                             <div>
                                 <label class="block text-xs text-gray-500 mb-1">Max <span id="unit-label-holiday-max">(paket/hari)</span></label>
                                 <input type="number" id="courier-capacity-holiday-max" value="120" min="10" max="250" 
                                        class="w-full text-sm rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                       onchange="updateCapacityPreview()">
-                                <p class="mt-0.5 text-xs text-gray-400">Min: 10 paket/hari (70/minggu)</p>
+                                       onchange="updateCapacityPreview()" oninput="updateCapacityPreview()">
+                                <p class="mt-0.5 text-xs text-gray-400">Range: 10-250 paket/hari (70-1750/minggu)</p>
                             </div>
                         </div>
                         <p class="mt-1 text-xs text-gray-500">
@@ -484,13 +484,15 @@ function updateCapacityPreview() {
     const unit = document.getElementById('capacity-unit').value;
     const multiplier = unit === 'daily' ? 7 : 1;
     
-    const normalMin = parseInt(document.getElementById('courier-capacity-normal-min').value) || 0;
-    const normalMax = parseInt(document.getElementById('courier-capacity-normal-max').value) || 0;
-    const holidayMin = parseInt(document.getElementById('courier-capacity-holiday-min').value) || 0;
-    const holidayMax = parseInt(document.getElementById('courier-capacity-holiday-max').value) || 0;
+    let normalMin = parseInt(document.getElementById('courier-capacity-normal-min').value) || 0;
+    let normalMax = parseInt(document.getElementById('courier-capacity-normal-max').value) || 0;
+    let holidayMin = parseInt(document.getElementById('courier-capacity-holiday-min').value) || 0;
+    let holidayMax = parseInt(document.getElementById('courier-capacity-holiday-max').value) || 0;
     
     // Validate minimum threshold
     const minThreshold = unit === 'daily' ? 10 : 70;
+    const maxThresholdNormal = unit === 'daily' ? 200 : 1400;
+    const maxThresholdHoliday = unit === 'daily' ? 250 : 1750;
     
     // Highlight invalid inputs
     const normalMinInput = document.getElementById('courier-capacity-normal-min');
@@ -504,7 +506,39 @@ function updateCapacityPreview() {
     holidayMinInput.style.borderColor = '';
     holidayMaxInput.style.borderColor = '';
     
-    // Check and highlight invalid values
+    // Enforce maximum limits and show warnings
+    let hasError = false;
+    
+    if (normalMin > maxThresholdNormal) {
+        normalMin = maxThresholdNormal;
+        normalMinInput.value = maxThresholdNormal;
+        normalMinInput.style.borderColor = '#f59e0b'; // orange-500
+        normalMinInput.style.borderWidth = '2px';
+        hasError = true;
+    }
+    if (normalMax > maxThresholdNormal) {
+        normalMax = maxThresholdNormal;
+        normalMaxInput.value = maxThresholdNormal;
+        normalMaxInput.style.borderColor = '#f59e0b';
+        normalMaxInput.style.borderWidth = '2px';
+        hasError = true;
+    }
+    if (holidayMin > maxThresholdHoliday) {
+        holidayMin = maxThresholdHoliday;
+        holidayMinInput.value = maxThresholdHoliday;
+        holidayMinInput.style.borderColor = '#f59e0b';
+        holidayMinInput.style.borderWidth = '2px';
+        hasError = true;
+    }
+    if (holidayMax > maxThresholdHoliday) {
+        holidayMax = maxThresholdHoliday;
+        holidayMaxInput.value = maxThresholdHoliday;
+        holidayMaxInput.style.borderColor = '#f59e0b';
+        holidayMaxInput.style.borderWidth = '2px';
+        hasError = true;
+    }
+    
+    // Check and highlight values below minimum
     if (normalMin < minThreshold && normalMin > 0) {
         normalMinInput.style.borderColor = '#ef4444'; // red-500
         normalMinInput.style.borderWidth = '2px';
@@ -520,6 +554,14 @@ function updateCapacityPreview() {
     if (holidayMax < minThreshold && holidayMax > 0) {
         holidayMaxInput.style.borderColor = '#ef4444';
         holidayMaxInput.style.borderWidth = '2px';
+    }
+    
+    // Show alert if maximum exceeded
+    if (hasError) {
+        const unitLabel = unit === 'daily' ? 'paket/hari' : 'paket/minggu';
+        setTimeout(() => {
+            alert(`⚠️ Nilai melebihi batas maksimal!\n\nBatas maksimal:\n• Kapasitas Normal: ${maxThresholdNormal} ${unitLabel}\n• Kapasitas Libur: ${maxThresholdHoliday} ${unitLabel}\n\nNilai telah disesuaikan ke batas maksimal.`);
+        }, 100);
     }
     
     // Calculate weekly values
@@ -594,7 +636,10 @@ async function loadPrediction() {
     // Validate minimum values (must be >= 70 for weekly or >= 10 for daily)
     const minWeeklyThreshold = 70;
     const minDailyThreshold = 10;
+    const maxWeeklyThresholdNormal = 1400;
+    const maxWeeklyThresholdHoliday = 1750;
     
+    // Check minimum values
     if (normalMin < minWeeklyThreshold) {
         alert(`❌ Error: Kapasitas Normal Min terlalu rendah!\n\nNilai minimum: ${minDailyThreshold} paket/hari atau ${minWeeklyThreshold} paket/minggu\nNilai Anda: ${normalMin} paket/minggu\n\nSilakan tingkatkan nilai atau gunakan default (65 paket/hari).`);
         return;
@@ -612,6 +657,27 @@ async function loadPrediction() {
     
     if (holidayMax < minWeeklyThreshold) {
         alert(`❌ Error: Kapasitas Libur Max terlalu rendah!\n\nNilai minimum: ${minDailyThreshold} paket/hari atau ${minWeeklyThreshold} paket/minggu\nNilai Anda: ${holidayMax} paket/minggu\n\nSilakan tingkatkan nilai atau gunakan default (120 paket/hari).`);
+        return;
+    }
+    
+    // Check maximum values
+    if (normalMin > maxWeeklyThresholdNormal) {
+        alert(`❌ Error: Kapasitas Normal Min terlalu tinggi!\n\nNilai maksimum: 200 paket/hari atau ${maxWeeklyThresholdNormal} paket/minggu\nNilai Anda: ${normalMin} paket/minggu\n\nSilakan turunkan nilai atau gunakan default (65 paket/hari).`);
+        return;
+    }
+    
+    if (normalMax > maxWeeklyThresholdNormal) {
+        alert(`❌ Error: Kapasitas Normal Max terlalu tinggi!\n\nNilai maksimum: 200 paket/hari atau ${maxWeeklyThresholdNormal} paket/minggu\nNilai Anda: ${normalMax} paket/minggu\n\nSilakan turunkan nilai atau gunakan default (80 paket/hari).`);
+        return;
+    }
+    
+    if (holidayMin > maxWeeklyThresholdHoliday) {
+        alert(`❌ Error: Kapasitas Libur Min terlalu tinggi!\n\nNilai maksimum: 250 paket/hari atau ${maxWeeklyThresholdHoliday} paket/minggu\nNilai Anda: ${holidayMin} paket/minggu\n\nSilakan turunkan nilai atau gunakan default (100 paket/hari).`);
+        return;
+    }
+    
+    if (holidayMax > maxWeeklyThresholdHoliday) {
+        alert(`❌ Error: Kapasitas Libur Max terlalu tinggi!\n\nNilai maksimum: 250 paket/hari atau ${maxWeeklyThresholdHoliday} paket/minggu\nNilai Anda: ${holidayMax} paket/minggu\n\nSilakan turunkan nilai atau gunakan default (120 paket/hari).`);
         return;
     }
     
