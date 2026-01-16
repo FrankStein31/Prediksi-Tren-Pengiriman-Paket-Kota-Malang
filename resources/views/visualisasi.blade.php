@@ -295,7 +295,7 @@
             <canvas id="prediction-chart"></canvas>
         </div>
         
-        <div class="mt-6 flex flex-wrap gap-6 justify-center text-sm">
+        <div class="mt-6 flex flex-wrap gap-6 justify-center text-sm hidden">
             <div class="flex items-center">
                 <div class="w-4 h-4 bg-blue-500 rounded mr-2"></div>
                 <span class="text-gray-700">Data Aktual (Historis)</span>
@@ -798,7 +798,7 @@ function displayChart(data) {
             labels: allLabels,
             datasets: [
                 {
-                    label: 'Data Aktual',
+                    label: 'Data Aktual (Historis)',
                     data: historicalDataFull,
                     borderColor: 'rgb(59, 130, 246)',
                     backgroundColor: 'rgba(59, 130, 246, 0.1)',
@@ -810,7 +810,7 @@ function displayChart(data) {
                     fill: false
                 },
                 {
-                    label: 'Prediksi',
+                    label: 'Prediksi (Forecast)',
                     data: forecastData,
                     borderColor: 'rgb(34, 197, 94)',
                     backgroundColor: 'rgba(34, 197, 94, 0.1)',
@@ -945,10 +945,10 @@ function displayForecastTable(forecastData, weeksCount) {
             <i class="fas fa-calendar-check mr-2"></i>Hari Libur
         </th>
         <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
-            <i class="fas fa-chart-line mr-2"></i>Prediksi
+            <i class="fas fa-chart-line mr-2"></i>Prediksi Jumlah Paket
         </th>
         <th class="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-            <i class="fas fa-users mr-2"></i>Rekomendasi Kurir
+            <i class="fas fa-users mr-2"></i>Rekomendasi Jumlah Kurir
         </th>
     `;
     
