@@ -30,8 +30,9 @@
     <div class="bg-white rounded-xl shadow-lg p-6">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- Left Column -->
-            <div class="space-y-4">
-                <div>
+            <div class="space-y-6">
+                <!-- Kecamatan Selection Card -->
+                <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200 shadow-sm">
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         <i class="fas fa-map-marker-alt mr-1 text-purple-600"></i>
                         Pilih Kecamatan
@@ -44,8 +45,9 @@
                     </select>
                 </div>
                 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                <!-- Date Mode Card -->
+                <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg p-4 border border-indigo-200 shadow-sm hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-3">
                         <i class="fas fa-calendar-alt mr-1 text-indigo-600"></i>
                         Mode Tanggal
                     </label>
@@ -67,47 +69,65 @@
                             </span>
                         </label>
                     </div>
-                </div>
-                
-                <div id="custom-date-container" class="hidden">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        <i class="fas fa-calendar mr-1 text-blue-600"></i>
-                        Pilih Tanggal Referensi
-                    </label>
-                    <input type="date" id="custom-date" 
-                           class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
-                    <p class="mt-1 text-xs text-gray-500">
-                        <i class="fas fa-info-circle mr-1"></i>
-                        Sistem akan menampilkan data historis sebelum tanggal ini dan prediksi setelahnya.
-                        Anda bisa pilih <strong>tanggal masa depan</strong> untuk melihat prediksi jangka panjang.
-                    </p>
-                </div>
-                
-                <!-- Weeks Settings -->
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            <i class="fas fa-history mr-1 text-blue-600"></i>
-                            Minggu Historis
-                        </label>
-                        <input type="number" id="weeks-historical" value="4" min="4" max="52" 
-                               class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
-                        <p class="mt-1 text-xs text-gray-500">Default: 4 minggu | Max: 52 minggu</p>
-                    </div>
                     
-                    <div>
+                    <div id="custom-date-container" class="hidden mt-4 pt-4 border-t border-indigo-300">
                         <label class="block text-sm font-medium text-gray-700 mb-2">
-                            <i class="fas fa-forward mr-1 text-green-600"></i>
-                            Minggu Prediksi
+                            <i class="fas fa-calendar mr-1 text-blue-600"></i>
+                            Pilih Tanggal Referensi
                         </label>
-                        <input type="number" id="weeks-forecast" value="4" min="1" max="12" 
+                        <input type="date" id="custom-date" 
                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
-                        <p class="mt-1 text-xs text-gray-500">Default: 4 minggu | Max: 12 minggu</p>
+                        <p class="mt-2 text-xs text-gray-600 bg-white/50 rounded p-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Sistem akan menampilkan data historis sebelum tanggal ini dan prediksi setelahnya.
+                            Anda bisa pilih <strong>tanggal masa depan</strong> untuk melihat prediksi jangka panjang.
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Weeks Settings Card -->
+                <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200 shadow-sm">
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">
+                        <i class="fas fa-calendar-week mr-1 text-blue-600"></i>
+                        Pengaturan Periode
+                    </label>
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- <div class="bg-white rounded-lg p-3 shadow-sm">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-history mr-1 text-blue-600"></i>
+                                Minggu Historis
+                            </label>
+                            <input type="number" id="weeks-historical" value="12" min="4" max="52" 
+                                   class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                            <p class="mt-1 text-xs text-gray-500">Default: 12 minggu</p>
+                        </div> -->
+                        <div class="bg-white rounded-lg p-3 shadow-sm opacity-75">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-lock mr-1 text-gray-500"></i>
+                                Minggu Historis
+                            </label>
+                            <input type="number" id="weeks-historical" value="12" min="4" max="52" 
+                                   class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 bg-gray-100 cursor-not-allowed"
+                                   readonly disabled>
+                            <p class="mt-1 text-xs text-gray-500">
+                                <i class="fas fa-info-circle mr-1"></i>Terkunci: 12 minggu
+                            </p>
+                        </div>
+                        
+                        <div class="bg-white rounded-lg p-3 shadow-sm">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-forward mr-1 text-green-600"></i>
+                                Minggu Prediksi
+                            </label>
+                            <input type="number" id="weeks-forecast" value="4" min="1" max="12" 
+                                   class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                            <p class="mt-1 text-xs text-gray-500">Default: 4 minggu | Max: 12 minggu</p>
+                        </div>
                     </div>
                 </div>
                 
                 <!-- Range Data Preview -->
-                <div class="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-4 border border-purple-200">
+                <!-- <div class="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-4 border border-purple-200">
                     <div class="flex items-start gap-3">
                         <i class="fas fa-chart-line text-purple-600 text-xl mt-1"></i>
                         <div class="flex-1">
@@ -128,7 +148,7 @@
                             </div>
                         </div>
                     </div>
-                </div>
+                </div> -->
             </div>
             
             <!-- Right Column -->
@@ -138,20 +158,8 @@
                 <div class="border border-indigo-200 rounded-lg p-4 bg-indigo-50">
                     <label class="text-sm font-semibold text-gray-800 flex items-center mb-3">
                         <i class="fas fa-users-cog mr-2 text-indigo-600"></i>
-                        Pengaturan Kapasitas Kurir
+                        Pengaturan Kapasitas Kurir Per Hari
                     </label>
-                    
-                    <!-- Unit Toggle -->
-                    <div class="mb-3 flex items-center justify-center gap-2 bg-white rounded-lg p-2">
-                        <button type="button" id="unit-daily-btn" onclick="switchUnit('daily')" 
-                                class="flex-1 px-3 py-2 text-xs font-medium rounded-md transition-colors bg-indigo-600 text-white">
-                            <i class="fas fa-sun mr-1"></i>Per Hari
-                        </button>
-                        <button type="button" id="unit-weekly-btn" onclick="switchUnit('weekly')" 
-                                class="flex-1 px-3 py-2 text-xs font-medium rounded-md transition-colors text-gray-700 hover:bg-gray-100">
-                            <i class="fas fa-calendar-week mr-1"></i>Per Minggu
-                        </button>
-                    </div>
                     
                     <input type="hidden" id="capacity-unit" value="daily">
                     
@@ -163,18 +171,16 @@
                         </label>
                         <div class="grid grid-cols-2 gap-2">
                             <div>
-                                <label class="block text-xs text-gray-500 mb-1">Min <span id="unit-label-normal-min">(paket/hari)</span></label>
+                                <label class="block text-xs text-gray-500 mb-1">Min (10 paket/hari)</label>
                                 <input type="number" id="courier-capacity-normal-min" value="65" min="10" max="200" 
                                        class="w-full text-sm rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                        onchange="updateCapacityPreview()" oninput="updateCapacityPreview()">
-                                <p class="mt-0.5 text-xs text-gray-400">Range: 10-200 paket/hari (70-1400/minggu)</p>
                             </div>
                             <div>
-                                <label class="block text-xs text-gray-500 mb-1">Max <span id="unit-label-normal-max">(paket/hari)</span></label>
+                                <label class="block text-xs text-gray-500 mb-1">Max (200 paket/hari)</label>
                                 <input type="number" id="courier-capacity-normal-max" value="80" min="10" max="200" 
                                        class="w-full text-sm rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                        onchange="updateCapacityPreview()" oninput="updateCapacityPreview()">
-                                <p class="mt-0.5 text-xs text-gray-400">Range: 10-200 paket/hari (70-1400/minggu)</p>
                             </div>
                         </div>
                         <p class="mt-1 text-xs text-gray-500">
@@ -191,18 +197,16 @@
                         </label>
                         <div class="grid grid-cols-2 gap-2">
                             <div>
-                                <label class="block text-xs text-gray-500 mb-1">Min <span id="unit-label-holiday-min">(paket/hari)</span></label>
+                                <label class="block text-xs text-gray-500 mb-1">Min (10 paket/hari)</label>
                                 <input type="number" id="courier-capacity-holiday-min" value="100" min="10" max="250" 
                                        class="w-full text-sm rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                        onchange="updateCapacityPreview()" oninput="updateCapacityPreview()">
-                                <p class="mt-0.5 text-xs text-gray-400">Range: 10-250 paket/hari (70-1750/minggu)</p>
                             </div>
                             <div>
-                                <label class="block text-xs text-gray-500 mb-1">Max <span id="unit-label-holiday-max">(paket/hari)</span></label>
+                                <label class="block text-xs text-gray-500 mb-1">Max (250 paket/hari)</label>
                                 <input type="number" id="courier-capacity-holiday-max" value="120" min="10" max="250" 
                                        class="w-full text-sm rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                        onchange="updateCapacityPreview()" oninput="updateCapacityPreview()">
-                                <p class="mt-0.5 text-xs text-gray-400">Range: 10-250 paket/hari (70-1750/minggu)</p>
                             </div>
                         </div>
                         <p class="mt-1 text-xs text-gray-500">
