@@ -32,20 +32,24 @@
             <!-- Left Column -->
             <div class="space-y-6">
                 <!-- Kecamatan Selection Card -->
-                <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200 shadow-sm">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        <i class="fas fa-map-marker-alt mr-1 text-purple-600"></i>
+                <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-6 border border-purple-200 shadow-sm">
+                    <label class="block text-sm font-semibold text-gray-800 mb-3">
+                        <i class="fas fa-map-marker-alt mr-2 text-purple-600"></i>
                         Pilih Kecamatan
                     </label>
-                    <select id="kecamatan-select" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                    <select id="kecamatan-select" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base py-2.5">
                         <option value="">-- Pilih Kecamatan --</option>
                         @foreach($kecamatans as $kec)
                         <option value="{{ $kec }}">{{ $kec }}</option>
                         @endforeach
                     </select>
+                    <p class="mt-2 text-xs text-gray-600 flex items-start gap-1">
+                        <i class="fas fa-info-circle mt-0.5 text-purple-500"></i>
+                        <span>Pilih kecamatan untuk melihat prediksi pengiriman paket di wilayah tersebut</span>
+                    </p>
                 </div>
                 
-                <!-- Date Mode Card -->
+                <!-- Date Mode Card (Hidden but keeping structure) -->
                 <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg p-4 border border-indigo-200 shadow-sm hidden">
                     <label class="block text-sm font-medium text-gray-700 mb-3">
                         <i class="fas fa-calendar-alt mr-1 text-indigo-600"></i>
@@ -86,47 +90,52 @@
                 </div>
                 
                 <!-- Weeks Settings Card -->
-                <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200 shadow-sm">
-                    <label class="block text-sm font-semibold text-gray-700 mb-3">
-                        <i class="fas fa-calendar-week mr-1 text-blue-600"></i>
-                        Pengaturan Periode
+                <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-6 border border-blue-200 shadow-sm">
+                    <label class="block text-sm font-semibold text-gray-800 mb-4">
+                        <i class="fas fa-calendar-week mr-2 text-blue-600"></i>
+                        Pengaturan Periode Prediksi
                     </label>
-                    <div class="grid grid-cols-2 gap-4">
-                        <!-- <div class="bg-white rounded-lg p-3 shadow-sm">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                <i class="fas fa-history mr-1 text-blue-600"></i>
-                                Minggu Historis
-                            </label>
-                            <input type="number" id="weeks-historical" value="12" min="4" max="52" 
-                                   class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
-                            <p class="mt-1 text-xs text-gray-500">Default: 12 minggu</p>
-                        </div> -->
-                        <div class="bg-white rounded-lg p-3 shadow-sm opacity-75">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                <i class="fas fa-lock mr-1 text-gray-500"></i>
-                                Minggu Historis
-                            </label>
-                            <input type="number" id="weeks-historical" value="12" min="4" max="52" 
-                                   class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 bg-gray-100 cursor-not-allowed"
-                                   readonly disabled>
-                            <p class="mt-1 text-xs text-gray-500">
-                                <i class="fas fa-info-circle mr-1"></i>Terkunci: 12 minggu
-                            </p>
-                        </div>
-                        
-                        <div class="bg-white rounded-lg p-3 shadow-sm">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                <i class="fas fa-forward mr-1 text-green-600"></i>
-                                Minggu Prediksi
-                            </label>
-                            <input type="number" id="weeks-forecast" value="4" min="1" max="12" 
-                                   class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
-                            <p class="mt-1 text-xs text-gray-500">Default: 4 minggu | Max: 12 minggu</p>
-                        </div>
+                    
+                    <!-- Hidden Historical Weeks (Locked) -->
+                    <!-- <div class="bg-white rounded-lg p-3 shadow-sm">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-history mr-1 text-blue-600"></i>
+                            Minggu Historis
+                        </label>
+                        <input type="number" id="weeks-historical" value="12" min="4" max="52" 
+                               class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                        <p class="mt-1 text-xs text-gray-500">Default: 12 minggu</p>
+                    </div> -->
+                    <div class="bg-white rounded-lg p-3 shadow-sm opacity-75 hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-lock mr-1 text-gray-500"></i>
+                            Minggu Historis
+                        </label>
+                        <input type="number" id="weeks-historical" value="12" min="4" max="52" 
+                               class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 bg-gray-100 cursor-not-allowed"
+                               readonly disabled>
+                        <p class="mt-1 text-xs text-gray-500">
+                            <i class="fas fa-info-circle mr-1"></i>Terkunci: 12 minggu
+                        </p>
                     </div>
+                    
+                    <!-- Forecast Weeks Input -->
+                    <div class="bg-white rounded-lg p-4 shadow-sm">
+                        <label class="block text-sm font-semibold text-gray-800 mb-3">
+                            <i class="fas fa-forward mr-2 text-green-600"></i>
+                            Minggu Prediksi
+                        </label>
+                        <input type="number" id="weeks-forecast" value="4" min="1" max="12" 
+                               class="w-full text-base rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 py-2.5">
+                        <p class="mt-2 text-xs text-gray-600 flex items-start gap-1">
+                            <i class="fas fa-info-circle mt-0.5 text-green-500"></i>
+                            <span>Tentukan berapa minggu ke depan yang ingin diprediksi (1-12 minggu)</span>
+                        </p>
+                    </div>
+                    
                 </div>
                 
-                <!-- Range Data Preview -->
+                <!-- Range Data Preview (Hidden but keeping structure) -->
                 <!-- <div class="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-4 border border-purple-200">
                     <div class="flex items-start gap-3">
                         <i class="fas fa-chart-line text-purple-600 text-xl mt-1"></i>
@@ -152,83 +161,96 @@
             </div>
             
             <!-- Right Column -->
-            <div class="space-y-4">
-                
+            <div class="space-y-6">
                 <!-- Courier Capacity Settings -->
-                <div class="border border-indigo-200 rounded-lg p-4 bg-indigo-50">
-                    <label class="text-sm font-semibold text-gray-800 flex items-center mb-3">
-                        <i class="fas fa-users-cog mr-2 text-indigo-600"></i>
+                <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg p-6 border border-indigo-200 shadow-sm">
+                    <label class="text-sm font-semibold text-gray-800 flex items-center mb-4">
+                        <i class="fas fa-users-cog mr-2 text-indigo-600 text-lg"></i>
                         Pengaturan Kapasitas Kurir Per Hari
                     </label>
                     
                     <input type="hidden" id="capacity-unit" value="daily">
                     
                     <!-- Normal Capacity -->
-                    <div class="mb-3 bg-white rounded-lg p-3">
-                        <label class="block text-xs font-medium text-gray-700 mb-2">
-                            <i class="fas fa-calendar mr-1 text-gray-600"></i>
+                    <div class="mb-4 bg-white rounded-lg p-4 shadow-sm">
+                        <label class="block text-sm font-semibold text-gray-800 mb-3">
+                            <i class="fas fa-calendar mr-2 text-gray-600"></i>
                             Kapasitas Hari Normal
                         </label>
-                        <div class="grid grid-cols-2 gap-2">
+                        <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-xs text-gray-500 mb-1">Min (10 paket/hari)</label>
+                                <label class="block text-xs font-medium text-gray-600 mb-2">
+                                    <i class="fas fa-arrow-down mr-1 text-blue-500"></i>Min (10 paket/hari)
+                                </label>
                                 <input type="number" id="courier-capacity-normal-min" value="65" min="10" max="200" 
-                                       class="w-full text-sm rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                       class="w-full text-base rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2"
                                        onchange="updateCapacityPreview()" oninput="updateCapacityPreview()">
                             </div>
                             <div>
-                                <label class="block text-xs text-gray-500 mb-1">Max (200 paket/hari)</label>
+                                <label class="block text-xs font-medium text-gray-600 mb-2">
+                                    <i class="fas fa-arrow-up mr-1 text-green-500"></i>Max (200 paket/hari)
+                                </label>
                                 <input type="number" id="courier-capacity-normal-max" value="80" min="10" max="200" 
-                                       class="w-full text-sm rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                       class="w-full text-base rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2"
                                        onchange="updateCapacityPreview()" oninput="updateCapacityPreview()">
                             </div>
                         </div>
-                        <p class="mt-1 text-xs text-gray-500">
-                            <i class="fas fa-arrow-right mr-1"></i>
-                            Per minggu: <strong id="preview-normal-range">455-560 paket</strong>
-                        </p>
+                        <div class="mt-3 pt-3 border-t border-gray-200">
+                            <p class="text-xs text-gray-600 flex items-center gap-1">
+                                <i class="fas fa-calculator text-gray-500"></i>
+                                Setara per minggu: <strong id="preview-normal-range" class="text-gray-800 ml-1">455-560 paket</strong>
+                            </p>
+                        </div>
                     </div>
                     
                     <!-- Holiday Capacity -->
-                    <div class="bg-white rounded-lg p-3">
-                        <label class="block text-xs font-medium text-gray-700 mb-2">
-                            <i class="fas fa-calendar-check mr-1 text-red-600"></i>
+                    <div class="bg-white rounded-lg p-4 shadow-sm">
+                        <label class="block text-sm font-semibold text-gray-800 mb-3">
+                            <i class="fas fa-calendar-check mr-2 text-red-600"></i>
                             Kapasitas Hari Libur
                         </label>
-                        <div class="grid grid-cols-2 gap-2">
+                        <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-xs text-gray-500 mb-1">Min (10 paket/hari)</label>
+                                <label class="block text-xs font-medium text-gray-600 mb-2">
+                                    <i class="fas fa-arrow-down mr-1 text-blue-500"></i>Min (10 paket/hari)
+                                </label>
                                 <input type="number" id="courier-capacity-holiday-min" value="100" min="10" max="250" 
-                                       class="w-full text-sm rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                       class="w-full text-base rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2"
                                        onchange="updateCapacityPreview()" oninput="updateCapacityPreview()">
                             </div>
                             <div>
-                                <label class="block text-xs text-gray-500 mb-1">Max (250 paket/hari)</label>
+                                <label class="block text-xs font-medium text-gray-600 mb-2">
+                                    <i class="fas fa-arrow-up mr-1 text-green-500"></i>Max (250 paket/hari)
+                                </label>
                                 <input type="number" id="courier-capacity-holiday-max" value="120" min="10" max="250" 
-                                       class="w-full text-sm rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                       class="w-full text-base rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2"
                                        onchange="updateCapacityPreview()" oninput="updateCapacityPreview()">
                             </div>
                         </div>
-                        <p class="mt-1 text-xs text-gray-500">
-                            <i class="fas fa-arrow-right mr-1"></i>
-                            Per minggu: <strong id="preview-holiday-range">700-840 paket</strong>
-                        </p>
+                        <div class="mt-3 pt-3 border-t border-gray-200">
+                            <p class="text-xs text-gray-600 flex items-center gap-1">
+                                <i class="fas fa-calculator text-gray-500"></i>
+                                Setara per minggu: <strong id="preview-holiday-range" class="text-gray-800 ml-1">700-840 paket</strong>
+                            </p>
+                        </div>
                     </div>
                     
+                    <!-- Reset Button -->
                     <button type="button" onclick="resetCourierSettings()" 
-                            class="mt-3 w-full text-xs text-gray-600 hover:text-gray-800 py-2 hover:bg-white rounded transition-colors">
-                        <i class="fas fa-undo mr-1"></i>Reset ke Default
+                            class="mt-4 w-full text-sm font-medium text-indigo-700 hover:text-indigo-900 py-2.5 bg-white hover:bg-indigo-50 rounded-lg transition-colors shadow-sm border border-indigo-200">
+                        <i class="fas fa-undo mr-2"></i>Reset ke Pengaturan Default
                     </button>
                 </div>
             </div>
         </div>
         
         <!-- Tampilkan Grafik Button - Full Width -->
-         <br>
-        <button onclick="loadPrediction()" 
-                class="w-full px-6 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-indigo-700 transition shadow-lg hover:shadow-xl text-lg">
-            <i class="fas fa-chart-line mr-2"></i>Tampilkan Grafik Prediksi
-        </button>
+        <div class="mt-6">
+            <button onclick="loadPrediction()" 
+                    class="w-full px-6 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl text-lg transform hover:scale-[1.01]">
+                <i class="fas fa-chart-line mr-2"></i>Tampilkan Grafik Prediksi
+            </button>
+        </div>
     </div>
 
     <!-- Loading Indicator -->
