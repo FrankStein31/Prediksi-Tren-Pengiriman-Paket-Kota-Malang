@@ -57,7 +57,7 @@
                     </label>
                     <div class="flex gap-2">
                         <label class="flex items-center flex-1 cursor-pointer hidden">
-                            <input type="radio" name="date-mode" value="realtime"  
+                            <input type="radio" name="date-mode" value="realtime" checked 
                                    onchange="toggleDateMode()"
                                    class="w-4 h-4 text-purple-600 focus:ring-purple-500">
                             <span class="ml-2 text-sm text-gray-700">
@@ -65,7 +65,7 @@
                             </span>
                         </label>
                         <label class="flex items-center flex-1 cursor-pointer">
-                            <input type="radio" name="date-mode" value="custom" checked
+                            <input type="radio" name="date-mode" value="custom" 
                                    onchange="toggleDateMode()"
                                    class="w-4 h-4 text-purple-600 focus:ring-purple-500">
                             <span class="ml-2 text-sm text-gray-700">
