@@ -56,7 +56,7 @@
                         Mode Tanggal
                     </label>
                     <div class="flex gap-2">
-                        <label class="flex items-center flex-1 cursor-pointer">
+                        <label class="flex items-center flex-1 cursor-pointer hidden">
                             <input type="radio" name="date-mode" value="realtime" checked 
                                    onchange="toggleDateMode()"
                                    class="w-4 h-4 text-purple-600 focus:ring-purple-500">
