@@ -50,7 +50,7 @@
                 </div>
                 
                 <!-- Date Mode Card (Hidden but keeping structure) -->
-                <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg p-4 border border-indigo-200 shadow-sm hidden">
+                <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg p-4 border border-indigo-200 shadow-sm">
                     <label class="block text-sm font-medium text-gray-700 mb-3">
                         <i class="fas fa-calendar-alt mr-1 text-indigo-600"></i>
                         Mode Tanggal
