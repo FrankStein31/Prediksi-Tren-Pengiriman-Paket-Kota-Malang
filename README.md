@@ -27,6 +27,16 @@ Sistem ini merupakan aplikasi **berbasis web** yang digunakan untuk melakukan **
 
 ---
 
+## Tambahkan ini di gitattributes untuk penggunaan LFS
+python/models/*.pkl filter=lfs diff=lfs merge=lfs -text <br>
+*.pkl filter=lfs diff=lfs merge=lfs -text <br>
+*.csv filter=lfs diff=lfs merge=lfs -text <br>
+*.xlsx filter=lfs diff=lfs merge=lfs -text <br>
+*.xls filter=lfs diff=lfs merge=lfs -text <br>
+*.sql filter=lfs diff=lfs merge=lfs -text <br>
+
+---
+
 ## 🖥️ Tampilan Antarmuka Aplikasi
 
 ### 🏠 Dashboard Utama
